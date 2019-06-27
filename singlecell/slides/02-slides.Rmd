@@ -122,8 +122,8 @@ knitr::include_graphics("./img/knee.png")
 
 - Lun et al. 2019, (https://doi.org/10.1186/s13059-019-1662-y)
 - **Key idea**: expression profile of empty droplets $\sim$ ambient RNA - Estimate ambient RNA profile by pooling across all cells/barcodes
-- Ambient expression $A_g$ for gene $g$ is sum of counts $y_{bg}$ over all barcodes $b$:
-$$ A_g = \sum_b y_{bg}  $$
+- Ambient expression $A_g$ for gene $g$ is sum of counts $y_{gb}$ over all barcodes $b$:
+$$ A_g = \sum_b y_{gb}  $$
 - Counts for barcode $b$ conditional on total counts for barcode $b$ ~ Dirichlet-multinomial
   + allows for overdispersion (analogous to Gamma-poisson)
 - Barcodes with strong deviations (permutation test on likelihood) are determined to be cells
@@ -171,33 +171,133 @@ knitr::include_graphics("./img/doubletfinder.jpg")
 
 ```{r, out.width = "500px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/libsize1.png")
+
 knitr::include_graphics("./img/libsize2.png")
 ```
 
-- DESeq2 library size factors use the median ratio method (Anders and Huber 2010 (https://doi.org/10.1186/gb-2010-11-10-r106)):
-
-$$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
+- DESeq2 library size factors use the median ratio method (Anders and Huber 2010 (https://doi.org/10.1186/gb-2010-11-10-r106)): $$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
 - assumes majority of genes are not differentially expressed
 
 ## Median ratio method in single-cell
 
-- If we compute this quantity in single-cell: $$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
+- Consider this quantity in single-cell: $$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{\color{red}{(\prod_{j=1}^B y_{gj})^{1/B}}} $$
+- For every gene $g$ where $y_{gb} = 0$ for any $b$, the highlighted quantity will be undefined
+- This means that the quantity is only computed **for genes that are nonzero in every cell**
+- As a result, log CPM normalization commonly used for single-cell: $$ log( \frac{y_{gb}*10^6}{\sum_b y_{gb}} + 1) $$
 
-## Pooling
+## Pooling & deconvolution normalization
 
-## SCnorm
+- scran: Lun et al. 2016 (https://doi.org/10.1186/s13059-016-0947-7) proposed a **pooling & deconvolution** approach
 
-## Adjusting for batch effects (equal cell composition)
+- Cells are pooled together and normalized against a global pseudoreference, then deconvolved by solving a system of linear equations 
 
-## Adjusting for batch effects (unknown cell compositions)
+```{r, out.width = "460px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/pooling.gif")
+```
 
-## Transformation
+## Quantile regression normalization
+
+- SCnorm: Bacher et al. 2017 (https://doi-org/10.1038/nmeth.4263) 
+- Key idea: groups of genes get separate size factors based on observed count-depth relationship
+- Ignores zeroes (developed for plate-based read count data)
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/countdepth.jpg")
+```
+
+## SCnorm reduces spurious discoveries
+
+```{r, out.width = "650px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scnorm.jpg")
+```
+
+Bacher et al. 2017 (https://doi-org/10.1038/nmeth.4263) 
+
+## Related idea: NB GLM residuals normalization 
+
+- scTransform: Hafemeister & Satija 2019 (https://doi.org/10.1101/576827)
+- Fits negative binomial generalized linear model for groups of genes with similar geometric means: $$ log(E(y_{gb})) = \beta_0 + \beta_1 log_{10}(t_b), $$ where $t_b = \sum_g y_{gb}$ is the library size for cell $b$
+- Key idea: normalized counts are taken as residuals of the above model ('regressing out' library size)
+
+## scTransform reduces correlation with depth
+
+```{r, out.width = "400px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/sctransform.jpg")
+```
+
+## Batch effects (equal cell composition)
+
+- When batches are known and cell populations are identical across batches $z_b$ (e.g. evenly split across two plates & homogeneous), can estimate effects due to batch
+
+- limma: Ritchie et al. 2015 (https://doi/org/10.1093/nar/gkv007) 
+  + fit a linear model to log-normalized counts to estimate batch effects $\beta_2$ and effects of interest $\beta_1$:  $$ log(y_{gb}) = \beta_0 + \beta_1 x_b + \beta_2 z_{b} $$
+  + remove batch effect: $$ log(y_{gb}) - \beta_2 z_{b} $$
+
+
+## Batch effects (unknown cell compositions)
+
+- When batch composition is unknown/variable, can't estimate common batch effect
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/mnn.jpg")
+```
+- MNNcorrect: Haghverdi et al. 2018 (https://doi.org/10.1038/nbt.4091) aligns cells based on their mutual nearest neigbors
+
+- See also Seurat: Butler et al. 2018 (https://doi-org/10.1038/nbt.4096)
+
+
+## MNNcorrect can remove align heterogeneous batches
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/mnnres.jpg")
+```
+
+## Variance stabilizing transformations 
+
+- Review: a VST removes the dependence of the variance on the mean
+- It's useful to a apply variance stabilizing transformation before:
+  + visualization
+  + selecting highly variable genes
+  + using downstream analysis tools that don't explicitly model count data (e.g. MAST, scDD)
+- Examples: 
+  + DESeq2::vst (estimates and removes trend of mean and variance)
+  + log (ideal when relative differences are important rather than absolute; requires addition of a pseudocount)
+- Not necessary if data was already log CPM normalized
+
+## Example: log-transformation
+
+```{r, out.width = "400px", show=TRUE, fig.align="center"}
+par(mfrow=c(1,3))
+smoothScatter(log(rowMeans(counts(sce))), log(rowVars(counts(sce))), 
+     xlab="log Mean expression", 
+     ylab="log Variance of expression")
+smoothScatter(rowMeans(log(counts(sce) + 1)), rowVars(log(counts(sce) + 1)), 
+     xlab="Mean log-expression", 
+     ylab="Variance of log-expression")
+vstc <- DESeq2::vst(counts(sce))
+smoothScatter(rowMeans(vstc), rowVars(vstc), 
+     xlab="Mean DESeq2::vst expression", 
+     ylab="Variance of DESeq2::vst expression")
+```
+## Should we impute zeroes?
+
+```{r, out.width = "400px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/suspicious.gif")
+```
+
+## Imputation can have unintended consequences
+
+```{r, out.width = "800px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/impute.gif")
+```
+Andrews & Hemburg 2019 (https://doi-org/10.12688/f1000research.16613.2))
 
 ## R tools for quality control and normalization
 
 - [scater](http://bioconductor.org/packages/scater/): visualization, quality control (Bioconductor)
 - [scran](http://bioconductor.org/packages/scran/): normalization, doublet detection, batch effect correction (Bioconductor)
 - [SCnorm](http://bioconductor.org/packages/SCnorm/): normalization (Bioconductor)
+- [sctransform](https://github.com/ChristophH/sctransform): normalization (CRAN)
 - [DropletUtils](http://bioconductor.org/packages/DropletUtils/): removal of empty droplets (Bioconductor)
 - [Seurat](https://satijalab.org/seurat/): normalization (CRAN)
 

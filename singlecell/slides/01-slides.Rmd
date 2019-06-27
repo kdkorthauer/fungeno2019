@@ -162,6 +162,6 @@ da Veiga Beltrame et al. 2019 (https://doi.org/10.6084/m9.figshare.7704659.v1)
 
 ## 
 
-```{r, out.width = "650px", show=TRUE, fig.align="center", fig.show='hold'}
+```{r, out.width = "580px", show=TRUE, fig.align="center", fig.show='hold'}
 knitr::include_graphics(c("./img/cat.gif"))
 ```

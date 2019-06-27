@@ -16,7 +16,7 @@ set.seed(651)
 ## Preview
 <ol type="I">
   <li>Introduction to single-cell RNA-seq</li>
-  <li>Quality control and Normalization</li>
+  <li>Quality control and normalization</li>
   <li>**Survey of downstream analysis methodology**</li>
 </ol>
   

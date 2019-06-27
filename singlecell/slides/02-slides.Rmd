@@ -1,0 +1,204 @@
+---
+title: "Statistical challenges in single-cell RNA-seq analysis II"
+author: "Keegan Korthauer"
+date: "July 6, 2019"
+output:
+  ioslides_presentation:
+    widescreen: true
+    incremental: false
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, error=FALSE, message=FALSE, warning=FALSE)
+set.seed(651)
+```
+
+## Preview
+<ol type="I">
+  <li>Introduction to single-cell RNA-seq</li>
+  <li>**Quality control and Normalization**</li>
+  <li>Survey of downstream analysis methodology</li>
+</ol>
+  
+```{r}
+source("./src/smartseq.R")
+```
+
+## Getting that count matrix
+
+- standard QC on raw reads (adapter/quality trim)
+- mapping to reference genome - bulk tools appropriate (e.g. Salmon, STAR, RSEM, etc)
+- count reads per transcript/gene - bulk tools appropriate (e.g. Subread)
+- collapse UMIs & demultiplex (if applicable) -> [scPipe]( http://bioconductor.org/packages/scPipe/)
+
+```{r, out.width = "200px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scPipe.png")
+```
+
+## R: SingleCellExperiment Class
+
+```{r, out.width = "780px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/sce.png")
+```
+
+Amezquita et al. 2019 (https://doi.org/10.1101/590562)
+
+## SingleCellExperiment Example
+
+```{r}
+sce
+```
+This SingleCellExperiment object has `r nrow(sce)` genes and `r ncol(sce)` cells.
+
+## Quality control metrics
+
+- library size (= total number of reads/UMIs)
+- number of expressed features / detection rate / dropout
+- expression levels by gene
+- proportion of reads mapped to spike-ins (if available) or MT genes
+- [Droplet] remove empty droplets
+- [Droplet] remove doublets
+
+## Library size
+
+```{r, fig.align="center"}
+plotColData(sce, y="total_counts", x="PlateOnco")
+```
+
+## Number of expressed features
+
+```{r, fig.align="center"}
+plotColData(sce, y="total_features_by_counts", x="PlateOnco")
+```
+
+## Detection rate
+
+```{r, fig.align="center"}
+colData(sce)$detection <- apply(counts(sce), 2, function(x) sum(x > 0)/length(x))
+plotColData(sce, y="detection", x="PlateOnco")
+```
+
+## Expression levels by gene - highest
+
+```{r, fig.align="center"}
+plotHighestExprs(sce, n=20)
+```
+
+## Expression levels by gene - average
+
+```{r, fig.align="center"}
+hist(log10(calcAverage(sce, use_size_factors=FALSE)), 
+     breaks=100, main="", col="grey80", 
+     xlab=expression(Log[10]~"average count"))
+```
+
+## Proportion of reads mapped to endogenous transcripts
+
+```{r, fig.align="center", fig.width = 9}
+multiplot(
+    plotColData(sce, y="pct_counts_ERCC", x="PlateOnco"),
+    plotColData(sce, y="pct_counts_Mt", x="PlateOnco"),
+    cols=2)
+```
+
+## [Droplet] Remove empty droplets
+
+- Ideally each droplet contains one cell and one bead
+- Process of adding cells (and beads) to droplets is stochastic, approiximated by a Poisson process:
+$$ P(k \text{ cells in a droplet}) = \frac{e^{-\lambda}\lambda^k}{k!}$$
+- Typically cells are added at a low rate ($\lambda$ << 1) to reduce the chance that a droplet contains multiple cells
+- Unfortunately, this means many droplets contain zero cells
+- Also unfortunately, reads still map to droplets with no cells
+
+## Simple idea: empty droplets have fewest reads
+
+```{r, out.width = "400px", show=TRUE, fig.align="center", fig.cap="Lun et al. 2019, (https://doi.org/10.1186/s13059-019-1662-y)"}
+knitr::include_graphics("./img/knee.png")
+```
+- e.g. Quantile (CellRanger), Knee plot (Drop-seq)
+- This risks removing cells with low biological material
+
+## More sophisticated idea: EmptyDrops 
+
+- Lun et al. 2019, (https://doi.org/10.1186/s13059-019-1662-y)
+- **Key idea**: expression profile of empty droplets $\sim$ ambient RNA - Estimate ambient RNA profile by pooling across all cells/barcodes
+- Ambient expression $A_g$ for gene $g$ is sum of counts $y_{bg}$ over all barcodes $b$:
+$$ A_g = \sum_b y_{bg}  $$
+- Counts for barcode $b$ conditional on total counts for barcode $b$ ~ Dirichlet-multinomial
+  + allows for overdispersion (analogous to Gamma-poisson)
+- Barcodes with strong deviations (permutation test on likelihood) are determined to be cells
+
+## EmptyDrops rescues cells with few reads
+
+```{r, out.width = "450px", show=TRUE, fig.align="center", fig.cap="Lun et al. 2019, (https://doi.org/10.1186/s13059-019-1662-y)"}
+knitr::include_graphics("./img/emptydrops.png")
+```
+
+## [Droplet] Remove doublets
+
+- Even with the low cell rate, occasionally droplets contain two or more cells
+- Can also happen in plate-based protocols (though rare) due to improper cell sorting/capture
+- Simple idea: remove barcodes with especially high numbers of reads - works poorly with diverse cell types
+
+## More sophisticated idea: cluster mixtures
+
+- Bach et al. 2017 (https://doi.org/10.1038/s41467-017-02001-5)
+- Key idea: remove cells that look like a mixture of two clusters
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scrublet.jpg")
+```
+
+## Another sophisticated idea: simulate doublets
+
+- Scrublet: Wolock, Lopez & Klein 2019 (https://doi.org/10.1016/j.cels.2018.11.005)
+- DoubletFinder: McGinnis, Murrow & Gartner 2019 (https://doi.org/10.1016/j.cels.2019.03.003)
+- Dahlin et al. 2018 (https://doi-org/10.1182/blood-2017-12-821413)
+- Key idea: remove cells that look like simulated doublets
+
+```{r, out.width = "600px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/doubletfinder.jpg")
+```
+
+## Normalization
+
+- Now that we've removed problematic cells, need to put counts on a comparable scale before downstream analysis
+- Main factors to account for:
+  + library size / sequencing depth
+  + batch effects (known or unknown)
+
+## Review: Sequence more, obtain more reads
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/libsize1.png")
+knitr::include_graphics("./img/libsize2.png")
+```
+
+- DESeq2 library size factors use the median ratio method (Anders and Huber 2010 (https://doi.org/10.1186/gb-2010-11-10-r106)):
+
+$$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
+- assumes majority of genes are not differentially expressed
+
+## Median ratio method in single-cell
+
+- If we compute this quantity in single-cell: $$ \hat{s}_b = \text{median}_g \frac{y_{gb}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
+
+## Pooling
+
+## SCnorm
+
+## Adjusting for batch effects (equal cell composition)
+
+## Adjusting for batch effects (unknown cell compositions)
+
+## Transformation
+
+## R tools for quality control and normalization
+
+- [scater](http://bioconductor.org/packages/scater/): visualization, quality control (Bioconductor)
+- [scran](http://bioconductor.org/packages/scran/): normalization, doublet detection, batch effect correction (Bioconductor)
+- [SCnorm](http://bioconductor.org/packages/SCnorm/): normalization (Bioconductor)
+- [DropletUtils](http://bioconductor.org/packages/DropletUtils/): removal of empty droplets (Bioconductor)
+- [Seurat](https://satijalab.org/seurat/): normalization (CRAN)
+
+<img src="./img/scaterhex.jpg" alt="drawing" width="200"/><img src="./img/scranhex.png" alt="drawing" width="200"/><img src="./img/DropletUtilshex.png" alt="drawing" width="200"/>

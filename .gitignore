@@ -1,0 +1,8 @@
+*.sqlite
+*.tsv
+*.rds
+*.txt
+*.zip
+*.RData
+*.RHistory
+

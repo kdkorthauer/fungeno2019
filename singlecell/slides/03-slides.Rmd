@@ -19,10 +19,80 @@ set.seed(651)
   <li>Quality control and normalization</li>
   <li>**Survey of downstream analysis methodology**</li>
 </ol>
-  
+
+```{r}
+source("./src/smartseq.R")
+```
+
+## Highly variable genes 
+
+- Goal: identify a set of genes with high variability attributable to biology (over and above technical variability)
+- Useful for vizualization, dimension reduction, clustering, marker gene selection, etc
+- Challenging without orthogonal measurement of technical variability (e.g. spikeins)
+  + with spikeins: select genes with variance significantly above mean-variance trend in control genes
+  + without spikeins: select genes with variance significantly above overall mean-variance trend in all endogenous genes (**assumes variance of most genes is purely technical**)
+
+## Highly variable genes with spikeins
+
+```{r, fig.align="center", fig.width = 8, fig.height = 5}
+library(scran)
+sce <- computeSumFactors(sce)
+sce <- computeSpikeFactors(sce, type="ERCC", general.use=FALSE)
+sce <- normalize(sce)
+
+var.fit <- trendVar(sce, parametric=TRUE, block=sce$Plate,
+    loess.args=list(span=0.3))
+var.out <- decomposeVar(sce, var.fit)
+
+chosen.genes <- order(var.out$bio, decreasing=TRUE)[1:sum(var.out$FDR < 0.01, na.rm=TRUE)]
+plot(var.out$mean[-chosen.genes], var.out$total[-chosen.genes], 
+     pch=16, cex=0.6, xlab="Mean log-expression", 
+     ylab="Variance of log-expression", ylim=c(0,max(var.out$total)))
+curve(var.fit$trend(x), col="dodgerblue", lwd=2, add=TRUE)
+cur.spike <- isSpike(sce)
+points(var.out$mean[cur.spike], var.out$total[cur.spike], col="red", pch=16)
+points(var.out$mean[chosen.genes], var.out$total[chosen.genes], col="orange", pch=16, cex=0.6)
+legend(x="topright", pch=c(16,16,16), col=c("black", "red", "orange"), 
+       legend = c("Endogeneous genes", "Spikeins", "HVG (FDR 0.01)"))
+```
+
+## Highly variable genes without spikeins
+
+```{r, fig.align="center", fig.width = 8, fig.height = 5}
+var.fit <- trendVar(sce, parametric=TRUE, block=sce$Plate,
+    loess.args=list(span=0.3), use.spikes = FALSE)
+var.out <- decomposeVar(sce, var.fit)
+
+chosen.genes <- order(var.out$bio, decreasing=TRUE)[1:sum(var.out$FDR < 0.01, na.rm=TRUE)]
+plot(var.out$mean[-chosen.genes], var.out$total[-chosen.genes], 
+     pch=16, cex=0.6, xlab="Mean log-expression", 
+     ylab="Variance of log-expression", ylim=c(0,max(var.out$total)))
+curve(var.fit$trend(x), col="dodgerblue", lwd=2, add=TRUE)
+points(var.out$mean[chosen.genes], var.out$total[chosen.genes], col="orange", pch=16, cex=0.6)
+legend(x="topright", pch=c(16,16), col=c("black", "orange"), 
+       legend = c("Endogeneous genes", "HVG (FDR 0.01)"))
+```
+
 ## Dimension reduction
 
-- for viz vs clustering
+- Useful to summarize & visualize relationships between cells in low dimensional space
+- Commonly used approaches:
+  + PCA (Principal Components Analysis)
+  + tSNE (t-distributed Stochastic Neighbor Embedding)
+  + UMAP (Uniform Manifold Approximation and Projection)
+- Clustering can be carried out on reduced dimensions, but **with caution**
+
+## PCA vs Nonlinear methods
+
+- PCA attempts to extract the largest components of variation in the data
+- Nonlinear methods such as tSNE and UMAP attempt to map points to a global coordinate system that preserves local structure
+  + density & distance of points not preserved
+  + better at visualizing rare subtypes
+
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/dimred.png")
+```
+image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
 
 ## tSNE
 
@@ -37,6 +107,17 @@ knitr::include_graphics("./img/clusterbenchmark.png")
 ## scdd
 
 ## DE after clustering
+
+## R tools for downstream analysis
+
+- [scater](http://bioconductor.org/packages/scater/): visualization, quality control (Bioconductor)
+- [scran](http://bioconductor.org/packages/scran/): normalization, doublet detection, batch effect correction (Bioconductor)
+- [SCnorm](http://bioconductor.org/packages/SCnorm/): normalization (Bioconductor)
+- [sctransform](https://github.com/ChristophH/sctransform): normalization (CRAN)
+- [DropletUtils](http://bioconductor.org/packages/DropletUtils/): removal of empty droplets (Bioconductor)
+- [Seurat](https://satijalab.org/seurat/): normalization (CRAN)
+
+<img src="./img/scaterhex.jpg" alt="drawing" width="200"/><img src="./img/scranhex.png" alt="drawing" width="200"/><img src="./img/DropletUtilshex.png" alt="drawing" width="200"/>
 
 ## There are many more tools I didn't mention...
 

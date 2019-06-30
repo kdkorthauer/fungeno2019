@@ -263,8 +263,8 @@ Haghverdi et al. 2018 (https://doi.org/10.1038/nbt.4091)
   + selecting highly variable genes
   + using downstream analysis tools that don't explicitly model count data (e.g. MAST, scDD)
 - Examples: 
-  + DESeq2::vst (estimates and removes trend of mean and variance)
   + log (ideal when relative differences are important rather than absolute; requires addition of a pseudocount)
+  + DESeq2::vst (estimates and removes trend of mean and variance)
 - Not necessary if data was already log CPM normalized
 
 ## Example: log-transformation

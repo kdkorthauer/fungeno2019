@@ -172,7 +172,8 @@ Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
 ## Differential distributions
 
 - [scDD](http://bioconductor.org/packages/scDD/): Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
-- Key idea: **explicitly** model within sample heterogeneity and identify genes with differential distributions (as opposed to differences in mean)
+- Key idea: subpopulations of cell type/state will manifest as multimodal expression distributions
+- Approach: **explicitly** model within sample heterogeneity and identify genes with differential distributions (as opposed to differences in mean)
 
 ```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd4.png")
@@ -212,10 +213,10 @@ Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
 
 ## Many other approaches for DE analysis
 
-```{r, out.width = "600px", show=TRUE, fig.align="center"}
+```{r, out.width = "460px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/debenchmark.jpg")
 ```
-Soneson & Robinson 2018 (https://doi-org.ezp-prod1.hul.harvard.edu/10.1038/nmeth.4612)
+Soneson & Robinson 2018 (https://doi.org/10.1038/nmeth.4612)
 
 ## Scaling up to millions of cells with Bioconductor
 
@@ -228,14 +229,14 @@ Soneson & Robinson 2018 (https://doi-org.ezp-prod1.hul.harvard.edu/10.1038/nmeth
   
 ## HDF5 in action - 1.3 million cells
 
-```{r, show=TRUE}
+```{r, echo=TRUE}
 library(TENxBrainData)
 assay(TENxBrainData(), "counts", withDimnames = FALSE)
 ```
 
 ## Resources for handling large data
 
-- For a gentle introduction to the nitty gritty details of how the DelayedArray framework works, see the tutorial ["Effectively_using_the_DelayedArray_framework_for_users"](http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/DelayedArrayWorkshop__Effectively_using_the_DelayedArray_framework_for_users/) from the 2019 Bioconductor meeting
+- For a gentle introduction to the nitty gritty details of how the DelayedArray framework works, see the tutorial ["Effectively using the DelayedArray framework for users"](http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/DelayedArrayWorkshop__Effectively_using_the_DelayedArray_framework_for_users/) from the 2019 Bioconductor meeting
 
 - For practice using scater and scran with HDF5 files the tutorial ["Analysis of Large Single-Cell RNA-Seq Datasets in R/Bioconductor"](http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/bioc2019singlecell__bioc2019singlecell/), also from the 2019 Bioconductor meeting 
 
@@ -266,4 +267,13 @@ Zappia, Phipson & Oshlack 2018 (https://doi.org/10.1371/journal.pcbi.1006245)
 
 ```{r, out.width = "750px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/awesomesinglecell.png")
+```
+
+
+## Installing packages we'll use today
+
+```{r, eval=FALSE, echo = TRUE}
+BiocManager::install("mbkmeans")
+BiocManager::install("scDD")
+BiocManager::install("MAST")
 ```

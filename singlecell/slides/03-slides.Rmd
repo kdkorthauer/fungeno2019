@@ -122,7 +122,7 @@ Andrews & Hemburg 2018 (https://doi.org/10.1016/j.mam.2017.07.002)
 - Many clustering algorithms require specification of the number of clusters (e.g. **K** in K-means)
 - Different algorithms may provide vastly different clusterings
 
-```{r, out.width = "200px", show=TRUE, fig.align="center"}
+```{r, out.width = "350px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/consensus.jpg")
 ```
 Risso et al 2018 (https://doi.org/10.1371/journal.pcbi.1006378)
@@ -167,12 +167,26 @@ knitr::include_graphics("./img/scdd2.png")
 ```{r, out.width = "500px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd3.png")
 ```
+Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
 
-## scDD
+## Differential distributions
+
+- [scDD](http://bioconductor.org/packages/scDD/): Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
+- Key idea: **explicitly** model within sample heterogeneity and identify genes with differential distributions (as opposed to differences in mean)
 
 ```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd4.png")
 ```
+
+## scDD framework 
+
+1. Test for global difference in distribution of expressed values with nonparametric two-sample Kolmogorov-Smirnov test:
+$$ D_{n,m} = sup_x |F_{1,n}(x) - F_{2,m}(x)|$$ $$ \text{Reject at level } \alpha \text{ if } D_{n,m} > \sqrt{\frac{-(n+m)ln(\alpha)}{2mn}} $$
+2. Test for difference in dropout: GLM adjusted for cellular detection rate
+3. Classify significant genes into summary patterns: 
+  + Fit $K-$ component normal mixture models to normalized log transformed expression values within each condition
+  + Select $K$ by BIC
+  + Select pattern based on number of components & their equality of means
 
 ## scDD detects more subtle and complex changes
 
@@ -183,16 +197,57 @@ Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
 
 ## DE after clustering
 
+- A common workflow will include detection of DE genes between discovered subtypes (clusters)
+- **Caution** must be used in the interpretation of p-values here
+- Since clusters are formed by maximizing differences in expression, it is not surprising to discover DE genes between clusters - *we can even detect changes in null data*
+- We may only be interested in differences in average expression here
+
+## Alternative approach for DE in single cell
+
+- [MAST](http://bioconductor.org/packages/MAST/): Finak et al. 2015 (http://doi.org/10.1186/s13059-015-0844-5)
+- Hurdle model that depends on whether gene $g$ in cell $b$ is expressed (Normalized log count $Y_{bg} > 0$) or not ($Y_{bg} = 0$): $$ logit(P(Y_{bg} = 0)) = X_b\beta^D_g$$ $$ P(Y_{bg} | Y_{bg} > 0) \sim N(X_b\beta_g^C, \sigma_g^2) $$
+- Obtain $\chi_{n}^{2}$ and $\chi_{m}^{2}$ likelihood ratio test statistics for $\beta_g^D$ and $\beta_g^C$, with $n$ and $m$ degrees of freedom, respectively 
+- Global test statistic for a change in either component is the sum of the two:
+  + sum of $\chi^2$ random variables yields another $\chi^2$ with degrees of freedom equal to the sum of degrees of freedom of the two original variables: $$\chi_m^{2} + \chi_n^{2} \sim \chi_{n+m}^{2}$$
+
+## Many other approaches for DE analysis
+
+```{r, out.width = "600px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/debenchmark.jpg")
+```
+Soneson & Robinson 2018 (https://doi-org.ezp-prod1.hul.harvard.edu/10.1038/nmeth.4612)
+
+## Scaling up to millions of cells with Bioconductor
+
+- Some datasets may be so large that they do not fit into memory efficiently (or at all)
+- Handy infrastructure for computing on data that is saved on disk - allows computation on subsets:
+  + HDF5 - file format interfaced with read/write functionalities in Bioconductor packages ([rhdf5](http://bioconductor.org/packages/rhdf5/), [Rhdf5lib](http://bioconductor.org/packages/Rhdf5lib/), [beachmat](http://bioconductor.org/packages/beachmat/))
+  + [DelayedArray](http://bioconductor.org/packages/DelayedArray/), [DelayedMatrixStats](http://bioconductor.org/packages/DelayedMatrixStats/) - Bioconductor packages that provide an ecosystem for storing and computing on disk-backed files just like you would ordinary matrices
+- Configured for use in SingleCellExperiment and interfaces automatically with [scater](http://bioconductor.org/packages/scater/) and [scran](http://bioconductor.org/packages/scran/)
+  + requires saving data as HDF5 format
+  
+## HDF5 in action - 1.3 million cells
+
+```{r, show=TRUE}
+library(TENxBrainData)
+assay(TENxBrainData(), "counts", withDimnames = FALSE)
+```
+
+## Resources for handling large data
+
+- For a gentle introduction to the nitty gritty details of how the DelayedArray framework works, see the tutorial ["Effectively_using_the_DelayedArray_framework_for_users"](http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/DelayedArrayWorkshop__Effectively_using_the_DelayedArray_framework_for_users/) from the 2019 Bioconductor meeting
+
+- For practice using scater and scran with HDF5 files the tutorial ["Analysis of Large Single-Cell RNA-Seq Datasets in R/Bioconductor"](http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/bioc2019singlecell__bioc2019singlecell/), also from the 2019 Bioconductor meeting 
+
 ## R tools for downstream analysis
 
-- [scater](http://bioconductor.org/packages/scater/): visualization, quality control (Bioconductor)
-- [scran](http://bioconductor.org/packages/scran/): normalization, doublet detection, batch effect correction (Bioconductor)
-- [SCnorm](http://bioconductor.org/packages/SCnorm/): normalization (Bioconductor)
-- [sctransform](https://github.com/ChristophH/sctransform): normalization (CRAN)
-- [DropletUtils](http://bioconductor.org/packages/DropletUtils/): removal of empty droplets (Bioconductor)
-- [Seurat](https://satijalab.org/seurat/): normalization (CRAN)
+- [scran](http://bioconductor.org/packages/scran/): detection of highly variable genes, dimension reduction, clustering (Bioconductor)
+- [Seurat](https://satijalab.org/seurat/): detection of highly variable genes, dimension reduction, clustering, DE (CRAN)
+- [mbkmeans](http://bioconductor.org/packages/mbkmeans/): minibatch K-means for large data (Bioconductor)
+- [scDD](http://bioconductor.org/packages/scDD/): differential distributions (Bioconductor)
+- [MAST](http://bioconductor.org/packages/MAST/): differential expression (Bioconductor)
 
-<img src="./img/scaterhex.jpg" alt="drawing" width="200"/><img src="./img/scranhex.png" alt="drawing" width="200"/><img src="./img/DropletUtilshex.png" alt="drawing" width="200"/>
+<img src="./img/scranhex.png" alt="drawing" width="200"/>
 
 ## There are many more tools I didn't mention...
 

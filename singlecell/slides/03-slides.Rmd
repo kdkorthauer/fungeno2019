@@ -94,17 +94,43 @@ knitr::include_graphics("./img/dimred.png")
 ```
 image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
 
-## tSNE
-
 ## Clustering
 
 ```{r, out.width = "600px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/clusterbenchmark.png")
 ```
 
+image source: http://bioconductor.org/packages/DuoClustering2018/
+
 ## Differential expression
 
+- Traditional differential expression for bulk RNA-seq aims at detecting shifts in mean (fold change)
+- Typically read counts are modeled with a two parameter distribution (mean, dispersion)
+
+## Bulk RNA-seq measures averages
+
+```{r, out.width = "550px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scdd1.png")
+```
+
+## Heterogeneity revealed by single-cell
+
+```{r, out.width = "550px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scdd2.png")
+```
+
 ## scdd
+
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scdd4.png")
+```
+
+## scDD detects more subtle and complex changes
+
+```{r, out.width = "400px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scdd5.png")
+```
+Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)
 
 ## DE after clustering
 

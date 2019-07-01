@@ -94,18 +94,48 @@ knitr::include_graphics("./img/dimred.png")
 ```
 image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
 
-## Clustering
+## General purpose clustering
+
+- **Hierarchical**: build and cut dendrogram based on pairwise distance matrix
+- **K-means**: iteratively assign cells to nearest cluster center
+- **Density-based**: clusters are defined as areas of higher density (e.g. [DBSCAN](https://dl.acm.org./citation.cfm?id=3001507))
+- **Graph-based**: assumes data can be represented as a graph structure; doesn't require estimating pairwise distance matrix (e.g. [SNN-Cliq](https://doi.org/10.1093/bioinformatics/btv088))
+
+<img src="./img/hclust.png" alt="drawing" width="240"/><img src="./img/dbscan.png" alt="drawing" width="410"/><img src="./img/graph.jpg" alt="drawing" width="300"/>
+
+
+## Clustering for single-cell
 
 - Goal: automatically identify subpopulations of cell types/states
-- General purpose:
-  + hierarchical clustering
-  + K-means
 - **Many** methods adapted/developed for single-cell to account for:
   + high dropout rate
   + batch effects
   + high dimensionality
+  
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/cluster.jpg")
+```
+Andrews & Hemburg 2018 (https://doi.org/10.1016/j.mam.2017.07.002)
 
-## Benchmark of clustering methods for single-cell RNA-seq
+## Evaluation of clustering results
+
+- Many clustering algorithms require specification of the number of clusters (e.g. **K** in K-means)
+- Different algorithms may provide vastly different clusterings
+
+```{r, out.width = "200px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/consensus.jpg")
+```
+Risso et al 2018 (https://doi.org/10.1371/journal.pcbi.1006378)
+
+## Metrics for evaluating clustering results
+
+- Single clustering:
+  + Average silhouette: how similar a cell is to its own cluster (average distance within) compared to other clusters (average distance between); not efficient for large numbers of cells $$s(b) = \frac{\bar{d}_{\text{within}}(b) - \bar{d}_{\text{between}}(b)}{max(\bar{d}_{\text{within}}(b), \bar{d}_{\text{between}}(b))}$$ 
+  + Modularity score: difference between number of within-cluster edges to the expected number under the null (random edges)
+- Comparing two clusterings
+  + Adjusted rand index: similarity measure between two clusterings based on number of cells grouped accordingly and adjusted for random groupings
+
+## Benchmark of clustering methods for single-cell
 
 - Duo et al. 2018: https://doi.org/10.12688/f1000research.15666.2
 - Bioconductor package to explore results: [DuoClustering2018](http://bioconductor.org/packages/DuoClustering2018/)
@@ -114,12 +144,11 @@ image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
 knitr::include_graphics("./img/clusterbenchmark.png")
 ```
 
-
-
-## Differential expression
+## Review: Differential expression
 
 - Traditional differential expression for bulk RNA-seq aims at detecting shifts in mean (fold change)
-- Typically read counts are modeled with a two parameter distribution (mean, dispersion)
+- Read counts $y_{bg}$ typically modeled with a two parameter distribution (e.g. mean $\mu_{bg}$, dispersion $\alpha_g$)
+- Recall DESeq2 model given size factors $s_b$: $$ y_{bg} \sim NB(\mu_{bg}, \alpha_g)$$ $$\mu_{bg}=s_b q_{bg}$$ $$ log_2(q_{bg}) = x_{b.}\beta_g $$  
 
 ## Bulk RNA-seq measures averages
 
@@ -127,10 +156,16 @@ knitr::include_graphics("./img/clusterbenchmark.png")
 knitr::include_graphics("./img/scdd1.png")
 ```
 
-## Heterogeneity revealed by single-cell
+## Heterogeneity hidden in bulk RNA-seq
 
 ```{r, out.width = "550px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd2.png")
+```
+
+## Distributions of single-cell read counts
+
+```{r, out.width = "500px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/scdd3.png")
 ```
 
 ## scDD

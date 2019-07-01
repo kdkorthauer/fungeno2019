@@ -73,16 +73,16 @@ legend(x="topright", pch=c(16,16), col=c("black", "orange"),
        legend = c("Endogeneous genes", "HVG (FDR 0.01)"))
 ```
 
-## Dimension reduction
+## Review: Dimension reduction
 
 - Useful to summarize & visualize relationships between cells in low dimensional space
 - Commonly used approaches:
   + PCA (Principal Components Analysis)
   + tSNE (t-distributed Stochastic Neighbor Embedding)
-  + UMAP (Uniform Manifold Approximation and Projection)
+  + [UMAP](https://doi.org./10.1038/nbt.4314) (Uniform Manifold Approximation and Projection)
 - Clustering can be carried out on reduced dimensions, but **with caution**
 
-## PCA vs Nonlinear methods
+## Review: PCA vs Nonlinear methods
 
 - PCA attempts to extract the largest components of variation in the data
 - Nonlinear methods such as tSNE and UMAP attempt to map points to a global coordinate system that preserves local structure
@@ -96,11 +96,25 @@ image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
 
 ## Clustering
 
+- Goal: automatically identify subpopulations of cell types/states
+- General purpose:
+  + hierarchical clustering
+  + K-means
+- **Many** methods adapted/developed for single-cell to account for:
+  + high dropout rate
+  + batch effects
+  + high dimensionality
+
+## Benchmark of clustering methods for single-cell RNA-seq
+
+- Duo et al. 2018: https://doi.org/10.12688/f1000research.15666.2
+- Bioconductor package to explore results: [DuoClustering2018](http://bioconductor.org/packages/DuoClustering2018/)
+
 ```{r, out.width = "600px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/clusterbenchmark.png")
 ```
 
-image source: http://bioconductor.org/packages/DuoClustering2018/
+
 
 ## Differential expression
 
@@ -119,15 +133,15 @@ knitr::include_graphics("./img/scdd1.png")
 knitr::include_graphics("./img/scdd2.png")
 ```
 
-## scdd
+## scDD
 
-```{r, out.width = "700px", show=TRUE, fig.align="center"}
+```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd4.png")
 ```
 
 ## scDD detects more subtle and complex changes
 
-```{r, out.width = "400px", show=TRUE, fig.align="center"}
+```{r, out.width = "450px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scdd5.png")
 ```
 Korthauer et al 2016 (https://doi.org/10.1186/s13059-016-1077-y)

@@ -8,6 +8,13 @@ output:
 bibliography: ref.bib
 ---   
 
+```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
+library(BiocStyle)
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(fig.asp=1)
+set.seed(651)
+```
+
 Adapted from the [singleSingleCell Bioconductor workflow](https://www.bioconductor.org/help/workflows/simpleSingleCell/) by Aaron Lun, Davis McCarthy, and John Marioni.
 
 # Load data object created in previous vignette
@@ -16,7 +23,7 @@ Here we continue our analysis of a relatively simple dataset [@lun2017assessing]
 we began in the previous vignette "Preprocessing and normalization of single-cell RNA-seq read counts". We'll load in the `SingleCellExperiment` object we previously saved. 
 
 ```{r}
-sce <- readRDS(file="416B_data.rds")
+sce <- readRDS(file="416B_postQC.rds")
 ```
 
 # Denoising expression values using PCA

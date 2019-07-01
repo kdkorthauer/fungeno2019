@@ -1,7 +1,6 @@
-if (!file.exists(file.path("https://www.ebi.ac.uk/arrayexpress/files",
-                           "E-MTAB-5522/E-MTAB-5522.sdrf.txt"))){
+if (!file.exists(file.path("../raw_data/counts_Calero_20160325.tsv"))){
   library(BiocFileCache)
-  bfc <- BiocFileCache("raw_data", ask = FALSE)
+  bfc <- BiocFileCache("../raw_data", ask = FALSE)
   lun.zip <- bfcrpath(bfc, 
                       file.path("https://www.ebi.ac.uk/arrayexpress/files",
                                 "E-MTAB-5522/E-MTAB-5522.processed.1.zip"))
@@ -9,6 +8,9 @@ if (!file.exists(file.path("https://www.ebi.ac.uk/arrayexpress/files",
                        file.path("https://www.ebi.ac.uk/arrayexpress/files",
                                  "E-MTAB-5522/E-MTAB-5522.sdrf.txt"))
   unzip(lun.zip, exdir = "../raw_data")
+  
+  metadata <- read.delim(lun.sdrf, check.names=FALSE, header=TRUE)
+  saveRDS(metadata, file.path("../raw_data/416B_metadata.rds"))
 }
 
 plate1 <- read.delim(file.path("../raw_data/counts_Calero_20160113.tsv"), 
@@ -28,7 +30,7 @@ isSpike(sce, "ERCC") <- grepl("^ERCC", rownames(sce))
 is.sirv <- grepl("^SIRV", rownames(sce))
 sce <- sce[!is.sirv,] 
 
-metadata <- read.delim(lun.sdrf, check.names=FALSE, header=TRUE)
+metadata <- readRDS(file.path("../raw_data/416B_metadata.rds"))
 m <- match(colnames(sce), metadata[["Source Name"]]) # Enforcing identical order.
 stopifnot(all(!is.na(m))) # Checking that nothing's missing.
 metadata <- metadata[m,]

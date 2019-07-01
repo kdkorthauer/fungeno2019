@@ -1,0 +1,149 @@
+---
+title: Downstream analysis of single-cell RNA-seq droplet data
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+bibliography: ref.bib
+---   
+
+```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
+library(BiocStyle)
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(fig.asp=1)
+set.seed(651)
+```
+
+Adapted from the [singleSingleCell Bioconductor workflow](https://www.bioconductor.org/help/workflows/simpleSingleCell/) by Aaron Lun, Davis McCarthy, and John Marioni.
+
+# Load data object created in previous vignette
+
+Here we continue our analysis of the peripheral blood mononuclear cell (PBMC) dataset from 10X Genomics [@zheng2017massively] that 
+we began in the previous vignette "Preprocessing and normalization of single-cell RNA-seq droplet data". We'll load in the `SingleCellExperiment` object we previously saved. 
+
+```{r}
+sce <- readRDS(file="pbmc_postQC.rds")
+```
+
+# Dimensionality reduction
+
+We use the `denoisePCA()` function with the assumed Poisson technical trend to choose the number of dimensions to retain after PCA.
+Recall that this involves a random initialization when `BSPARAM=IrlbaParam()`, which motivates the call to `set.seed()` to obtain reproducible results.
+
+```{r}
+set.seed(1000)
+sce <- denoisePCA(sce, technical=new.trend, BSPARAM=IrlbaParam())
+ncol(reducedDim(sce, "PCA"))
+```
+
+```{r screeplot, fig.cap="Variance explained by each principal component in the PBMC dataset. The red line represents the chosen number of PCs."}
+plot(attr(reducedDim(sce), "percentVar"), xlab="PC",
+	ylab="Proportion of variance explained")
+abline(v=ncol(reducedDim(sce, "PCA")), lty=2, col="red")
+```
+
+Examination of the first few PCs already reveals some strong substructure in the data (Figure \@ref(fig:pcaplot-init)).
+
+```{r pcaplot-init, fig.cap="Pairwise PCA plots of the first three PCs in the PBMC dataset, constructed from normalized log-expression values of genes with positive biological components. Each point represents a cell, coloured by the log-number of expressed features.", fig.width=9}
+plotPCA(sce, ncomponents=3, colour_by="log10_total_features_by_counts")
+```
+
+This is recapitulated with a _t_-SNE plot (Figure \@ref(fig:tsneplot-init)).
+Again, note that we set `use_dimred=` to perform _t_-SNE on the denoised expression matrix.
+
+```{r tsneplot-init, fig.cap="_t_-SNE plots constructed from the denoised PCs of the PBMC dataset. Each point represents a cell and is coloured according to the log-number of expressed features."}
+set.seed(1000)
+sce <- runTSNE(sce, use_dimred="PCA", perplexity=30)
+plotTSNE(sce, colour_by="log10_total_features_by_counts")
+```
+
+# Clustering with graph-based methods
+
+We build a shared nearest neighbour graph [@xu2015identification] and use the Walktrap algorithm to identify clusters.
+
+```{r}
+snn.gr <- buildSNNGraph(sce, use.dimred="PCA")
+clusters <- igraph::cluster_walktrap(snn.gr)
+sce$Cluster <- factor(clusters$membership)
+table(sce$Cluster)
+```
+
+We look at the ratio of the observed and expected edge weights to confirm that the clusters are modular.
+(We don't look at the modularity score itself, as that varies by orders of magnitudes across clusters and is difficult to interpret.)
+Figure \@ref(fig:clustermod) indicates that most of the clusters are well seperated, with few strong off-diagonal entries. 
+
+```{r clustermod, fig.cap="Heatmap of the log~10~-ratio of the total weight between nodes in the same cluster or in different clusters, relative to the total weight expected under a null model of random links."}
+cluster.mod <- clusterModularity(snn.gr, sce$Cluster, get.values=TRUE)
+log.ratio <- log2(cluster.mod$observed/cluster.mod$expected + 1)
+
+library(pheatmap)
+pheatmap(log.ratio, cluster_rows=FALSE, cluster_cols=FALSE, 
+    color=colorRampPalette(c("white", "blue"))(100))
+```
+
+We examine the cluster identities on a _t_-SNE plot (Figure \@ref(fig:tsneplot-cluster)) to confirm that different clusters are indeed separated.
+
+```{r tsneplot-cluster, fig.cap="_t_-SNE plots constructed from the denoised PCs of the PBMC dataset. Each point represents a cell and is coloured according to its cluster identity."}
+plotTSNE(sce, colour_by="Cluster")
+```
+
+# Marker gene detection
+
+```{r, echo=FALSE, results="hide"}
+# Hidden variables for use in text or hidden chunks,
+# to avoid the need for manual changes.
+chosen.platelets <- 12 
+```
+
+We detect marker genes for each cluster using `findMarkers()`.
+Again, we only look at upregulated genes in each cluster, as these are more useful for positive identification of cell types in a heterogeneous population.
+
+```{r}
+markers <- findMarkers(sce, clusters=sce$Cluster, direction="up")
+```
+
+We examine the markers for cluster `r chosen.platelets` in more detail.
+The upregulation of genes such as _PF4_ and _PPBP_ suggests that this cluster contains platelets or their precursors.
+
+```{r}
+marker.set <- markers[["12"]]
+head(marker.set[,1:8], 10) # only first 8 columns, for brevity
+```
+
+```{r, echo=FALSE, results="hide"}
+# Checking 'marker.set' and 'chosen.platelets' are consistent.
+stopifnot(identical(marker.set, markers[[chosen.platelets]]))
+
+# Checking the cluster is what we wanted.
+pf4 <- sapply(marker.set["PF4",-(1:3)], sign)
+stopifnot(all(pf4==1))
+```
+
+This is confirmed in Figure \@ref(fig:heatmap), where the transcriptional profile of cluster `r chosen.platelets` is clearly distinct from the others.
+
+```{r heatmap, fig.wide=TRUE, fig.cap=sprintf("Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster %s in the PBMC dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend.", chosen.platelets)}
+chosen <- rownames(marker.set)[marker.set$Top <= 10]
+plotHeatmap(sce, features=chosen, exprs_values="logcounts", 
+    zlim=5, center=TRUE, symmetric=TRUE, cluster_cols=FALSE,
+    colour_columns_by="Cluster", columns=order(sce$Cluster),
+    show_colnames=FALSE)
+```
+
+# Concluding remarks
+
+Having completed the basic analysis, we save the `SingleCellExperiment` object with its associated data to file.
+This avoids having to repeat all of the pre-processing steps described above prior to further analyses.
+
+```{r}
+saveRDS(sce, file="pbmc_data.rds")
+```
+
+All software packages used in this workflow are publicly available from the Comprehensive R Archive Network (https://cran.r-project.org) or the Bioconductor project (http://bioconductor.org).
+The specific version numbers of the packages used are shown below, along with the version of the R installation.
+
+```{r}
+sessionInfo()
+```
+
+# References

@@ -11,7 +11,7 @@ bibliography: ref.bib
 ```{r, echo=FALSE, message=FALSE}
 library(BiocStyle)
 knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
-opts_chunk$set(fig.asp=1)
+knitr::opts_chunk$set(fig.asp=1)
 set.seed(651)
 ```
 
@@ -31,14 +31,14 @@ This saves the files to a local cache (`raw_data`) and avoids re-downloading the
 
 ```{r}
 library(BiocFileCache)
-bfc <- BiocFileCache("raw_data", ask = FALSE)
+bfc <- BiocFileCache("../raw_data", ask = FALSE)
 lun.zip <- bfcrpath(bfc, 
     file.path("https://www.ebi.ac.uk/arrayexpress/files",
         "E-MTAB-5522/E-MTAB-5522.processed.1.zip"))
 lun.sdrf <- bfcrpath(bfc, 
     file.path("https://www.ebi.ac.uk/arrayexpress/files",
         "E-MTAB-5522/E-MTAB-5522.sdrf.txt"))
-unzip(lun.zip, exdir = "./raw_data")
+unzip(lun.zip, exdir = "../raw_data")
 ```
 
 
@@ -52,9 +52,9 @@ In each matrix, each row represents an endogenous gene or a spike-in transcript,
 Subsequently, the count in each entry of the matrix represents the number of reads mapped to a particular gene/transcript in a particular cell.
 
 ```{r}
-plate1 <- read.delim(file.path("./raw_data/counts_Calero_20160113.tsv"), 
+plate1 <- read.delim(file.path("../raw_data/counts_Calero_20160113.tsv"), 
     header=TRUE, row.names=1, check.names=FALSE)
-plate2 <- read.delim(file.path("./raw_data/counts_Calero_20160325.tsv"), 
+plate2 <- read.delim(file.path("../raw_data/counts_Calero_20160325.tsv"), 
     header=TRUE, row.names=1, check.names=FALSE)
 gene.lengths <- plate1$Length # First column is the gene length.
 plate1 <- as.matrix(plate1[,-1]) # Discarding gene length (as it is not a cell).
@@ -517,7 +517,7 @@ The object can then be easily restored into new R sessions using the `readRDS` f
 This allows further work to be conducted without having to repeat all of the processing steps described above.
 
 ```{r}
-saveRDS(file="416B_data.rds", sce)
+saveRDS(file="416B_postQC.rds", sce)
 ```
 
 A variety of methods are available to perform more complex analyses on the processed expression data.

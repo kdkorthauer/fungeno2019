@@ -39,6 +39,7 @@ In contrast, random technical noise affects each gene independently and will be 
 The `denoisePCA()` function removes later PCs until the total discarded variance is equal to the sum of technical components for all genes used in the PCA, using the technical components estimated from `decomposeVar()`.
 
 ```{r}
+library(scran)
 sce <- denoisePCA(sce, technical=var.out, assay.type="corrected")
 dim(reducedDim(sce, "PCA")) 
 ```

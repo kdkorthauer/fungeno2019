@@ -311,7 +311,9 @@ Andrews & Hemburg 2019 (https://doi.org/10.12688/f1000research.16613.1)
 
 ```{r, eval=FALSE, echo = TRUE}
 # workflow that includes many of the packages we'll explore
+BiocManager::install("EnsDb.Hsapiens.v86")
 BiocManager::install("simpleSingleCell")
+BiocManager::install("simpleSingleCell", dependencies = "Suggests")
 
 # other individual packages not included in the above
 BiocManager::install("SCnorm")

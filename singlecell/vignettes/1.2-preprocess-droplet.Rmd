@@ -30,7 +30,7 @@ library(BiocFileCache)
 bfc <- BiocFileCache("../raw_data", ask = FALSE)
 raw.path <- bfcrpath(bfc, file.path("http://cf.10xgenomics.com/samples",
     "cell-exp/2.1.0/pbmc4k/pbmc4k_raw_gene_bc_matrices.tar.gz"))
-untar(raw.path, exdir=file.path(tempdir(), "pbmc4k"))
+untar(raw.path, exdir=file.path("../raw_data/pbmc4k"))
 ```
 
 # Setting up the data
@@ -215,7 +215,7 @@ hist(log10(ave), col="grey80")
 The set of most highly expressed genes is dominated by ribosomal protein and mitochondrial genes (Figure \@ref(fig:highexpr)), as expected.
 
 ```{r highexpr, fig.wide=TRUE, fig.asp=1.5, fig.cap="Percentage of total counts assigned to the top 50 most highly-abundant features in the PBMC dataset. For each feature, each bar represents the percentage assigned to that feature for a single cell, while the circle represents the average across all cells. Bars are coloured by the total number of expressed features in each cell."}
-plotHighestExprs(sce)
+plotHighestExprs(sce, n=50)
 ```
 
 # Normalizing for cell-specific biases

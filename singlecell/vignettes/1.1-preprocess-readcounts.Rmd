@@ -406,7 +406,7 @@ Instead, we can try computing cell- and gene-specific size factors using `r Bioc
 First, we examine the count-depth relationship in raw data. For the sake of computational
 efficiency, we'll only work with a random subset of 2000 genes in this section.
 
-```{r}
+```{r, fig.height=2.5}
 # random subset of 2000 genes
 set.seed(9)
 ix <- sample(seq_len(nrow(sce)), 2000, replace=FALSE)
@@ -419,7 +419,7 @@ countDeptEst <- plotCountDepth(Data = sce[ix,],
 
 Next, we examine the relationship in scran-normalized data.
 
-```{r}
+```{r,fig.height=2.5}
 countDeptEst <- plotCountDepth(Data = sce[ix,], 
                                NormalizedData = assays(sce)$logcounts[ix,],
                                FilterCellProportion = .1, 
@@ -428,7 +428,7 @@ countDeptEst <- plotCountDepth(Data = sce[ix,],
 
 We instead carry out normalization using SCnorm and replot the slopes of the count-depth relationship. For the sake of compuational efficiency, we set K=3 (not recommended in practice).
 
-```{r}
+```{r, fig.height=2.5}
 sce.scnorm <- SCnorm(Data = sce[ix,],
                      Conditions = colData(sce)$PlateOnco, K=3,
                      FilterCellNum = 10, NCores=1, reportSF = TRUE)

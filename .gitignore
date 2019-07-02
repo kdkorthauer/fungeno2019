@@ -6,3 +6,5 @@
 *.RData
 *.RHistory
 *.tar.gz
+*.mtx
+

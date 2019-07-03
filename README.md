@@ -29,3 +29,6 @@ Here, you'll find course material for the 2019 CSHL short course on ["Statistica
 ### Slides
 
 ### Workflows & exercises
+
+***
+These materials are available under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/)

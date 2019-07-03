@@ -303,7 +303,7 @@ table(sce$Cluster)
 We visualize the clustering on a _t_-SNE plot [@van2008visualizing].
 Figure \@ref(fig:tsneclust) shows that there are a number of well-separated clusters as well as some more inter-related clusters.
 
-```{r tsneclust, fig.cap="t-SNE plot of the mammary gland data set. Each point is a cell coloured according to its assigned cluster identity."}
+```{r tsneclust, fig.cap="t-SNE plot of the PBMC data set. Each point is a cell coloured according to its assigned cluster identity."}
 set.seed(1000)
 sce <- runTSNE(sce, use_dimred="PCA")
 plotTSNE(sce, colour_by="Cluster")
@@ -331,7 +331,7 @@ dbl.out
 Examination of the output of `doubletCluster()` indicates that cluster 1 has the fewest unique genes and library sizes that are comparable to or greater than its parents.
 We see that every gene detected in this cluster is also expressed in either of the two proposed parent clusters (Figure \@ref(fig:heatclust)).
 
-```{r heatclust, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 1 in the mammary gland dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend."}
+```{r heatclust, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 1 in the PBMC dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend."}
 markers <- findMarkers(sce, sce$Cluster, direction="any")
 dbl.markers <- markers[["1"]]
 chosen <- rownames(dbl.markers)[dbl.markers$Top <= 10]
@@ -374,14 +374,14 @@ summary(dbl.dens)
 
 The highest doublet scores are concentrated in a single cluster of cells in the centre of Figure \@ref(fig:denstsne).
 
-```{r denstsne, fig.cap="t-SNE plot of the mammary gland data set. Each point is a cell coloured according to its doublet density."}
+```{r denstsne, fig.cap="t-SNE plot of the PBMC data set. Each point is a cell coloured according to its doublet density."}
 sce$DoubletScore <- dbl.dens
 plotTSNE(sce, colour_by="DoubletScore")
 ```
 
 From the clustering information, we see that the affected cells belong to the same cluster that was identified using `doubletCluster()` (Figure \@ref(fig:densclust)). 
 
-```{r densclust, fig.cap="Distribution of doublet scores for each cluster in the mammary gland data set. Each point is a cell."}
+```{r densclust, fig.cap="Distribution of doublet scores for each cluster in the PBMC data set. Each point is a cell."}
 plotColData(sce, x="Cluster", y="DoubletScore", colour_by="Cluster")
 ```
 

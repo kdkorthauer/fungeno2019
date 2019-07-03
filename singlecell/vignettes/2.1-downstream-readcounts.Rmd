@@ -68,7 +68,7 @@ plotReducedDim(sce, use_dimred="PCA", ncomponents=3,
 By comparison, we observe no clear separation of cells by batch (Figure \@ref(fig:pcaplot416b-batch)).
 This indicates that our batch correction step using `removeBatchEffect()` was successful.
 
-```{r pcaplot416b-batch, fig.cap="Pairwise PCA plots of the first three PCs in the 416B dataset, constructed from normalized log-expression values of genes with positive biological components. Each point represents a cell, coloured according to the plate of origin.", fig.width=9}
+```{r pcaplot416b-batch, fig.cap="Pairwise PCA plots of the first three PCs in the 416B dataset, constructed from normalized log-expression values of genes with positive biological components. Each point represents a cell, coloured according to the plate of origin."}
 plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
     colour_by="Plate") 
 ```
@@ -89,7 +89,7 @@ However, this improvement comes at the cost of more computational effort and req
 We demonstrate the generation of _t_-SNE plots in Figure \@ref(fig:tsneplot416b) using the `plotTSNE()` function.
 We set `use_dimred="PCA"` to perform the _t_-SNE on the low-rank approximation of the data, allowing the algorithm to take advantage of the previous denoising step.
 
-```{r tsneplot416b, fig.cap="_t_-SNE plots constructed from the denoised PCs in the 416B dataset, using a range of perplexity values. Each point represents a cell, coloured according to its oncogene induction status. Bars represent the coordinates of the cells on each axis.", fig.width=15, fig.asp=0.5}
+```{r tsneplot416b, fig.cap="_t_-SNE plots constructed from the denoised PCs in the 416B dataset, using a range of perplexity values. Each point represents a cell, coloured according to its oncogene induction status. Bars represent the coordinates of the cells on each axis.", fig.height=8, fig.width=12}
 set.seed(100)
 out5 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=5),
     colour_by="Oncogene")  + ggtitle("Perplexity = 5")
@@ -99,7 +99,7 @@ out10 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=10),
 set.seed(100)
 out20 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=20),
     colour_by="Oncogene")  + ggtitle("Perplexity = 20")
-multiplot(out5, out10, out20, cols=3)
+multiplot(out5, out10, out20, cols=3) + theme(text = element_text(size=14))
 ```
 
 _t_-SNE is a stochastic method, so users should run the algorithm several times to ensure that the results are representative.
@@ -158,7 +158,7 @@ Adjacent cells are generally assigned to the same cluster, indicating that the c
 
 ```{r tsnecluster416b, fig.cap="_t_-SNE plot of the denoised PCs of the 416B dataset. Each point represents a cell and is coloured according to the cluster identity to which it was assigned."}
 sce$cluster <- factor(my.clusters)
-plotTSNE(sce, colour_by="cluster") 
+plotTSNE(sce, colour_by="cluster") + theme(text = element_text(size=14))
 ```
 
 We check the separatedness of the clusters using the silhouette width (Figure \@ref(fig:silhouette416b)).
@@ -228,11 +228,12 @@ A cursory examination of the heatmap indicates that cluster 1 contains oncogene-
 This is consistent with the potential induction of senescence as an anti-tumorigenic response [@wajapeyee2010senescence].
 A more comprehensive investigation of the function of these markers can be performed with gene set enrichment analyses, e.g., using `kegga` or `goana` from `r Biocpkg("limma")`.
 
-```{r heatmapmarker416b, fig.width=10, fig.asp=0.8, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 1 in the 416B dataset. Column colours represent the cluster to which each cell is assigned, the plate of origin or the oncogene induction status of each cell, as indicated by the legend."}
+```{r heatmapmarker416b, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 1 in the 416B dataset. Column colours represent the cluster to which each cell is assigned, the plate of origin or the oncogene induction status of each cell, as indicated by the legend."}
 top.markers <- rownames(marker.set)[marker.set$Top <= 10]
 plotHeatmap(sce, features=top.markers, columns=order(sce$cluster), 
     colour_columns_by=c("cluster", "Plate", "Oncogene"),
-    cluster_cols=FALSE, center=TRUE, symmetric=TRUE, zlim=c(-5, 5)) 
+    cluster_cols=FALSE, center=TRUE, symmetric=TRUE, zlim=c(-5, 5), 
+    show_colnames = FALSE) 
 ```
 
 Many of the markers in Figure \@ref(fig:heatmapmarker416b) are not uniquely up- or downregulated in the chosen cluster.
@@ -246,26 +247,63 @@ The aim is to identify a corresponding subset of cells that express the upregula
 
 # Differential expression
 
-Here will identify differentially expressed genes between induced and control cells. Specifically, we'll identify _differentially distributed_ genes using the `r Biocpkg("scDD")` package [@korthauer2016statistical]. This method expects normalized counts (not log-scale) in the `normcounts` slot. Since we also want to adjust for plate effects, we'll add the `corrected` counts back-transformed to the original scale.
+Here will identify differentially expressed genes between induced and control cells. Specifically, we'll identify _differentially distributed_ genes using the `r Biocpkg("scDD")` package [@korthauer2016statistical]. This method expects normalized counts (not log-scale) in the `normcounts` slot. Since we also want to adjust for plate effects, we'll add the `corrected` counts back-transformed to the original scale. However, note that using these corrected values transforms zero values to nonzeroes. So we also enforce that counts that were originally zero remain zero. 
 
 ```{r}
 assays(sce)$normcounts <- 2^assays(sce)$corrected
+assays(sce)$normcounts[counts(sce)==0] <- 0
 ```
 
-Next we run the `scDD()` function. Note that the function will by default use multiple cores, so we should specify the type of parallelization and number of cores using the `r Biocpkg("BiocParallel")` package. Here we specify use of a single core with the `MulticoreParam()` function.
+Next we run the `scDD()` function. Note that the function will by default use multiple cores, so we should specify the type of parallelization and number of cores using the `r Biocpkg("BiocParallel")` package. Here we specify use of 1 core with the `MulticoreParam()` function. 
+
+For the
+sake of computational efficiency, here we won't carry out the classification step (to identify the differential distribution pattern). To do so, you can set `categorize = TRUE`.
 
 ```{r}
 library(scDD)
 library(BiocParallel)
 
-dd <- scDD(sce, param = MulticoreParam(1), condition = "Oncogene")
+dd <- scDD(sce, param = MulticoreParam(1), condition = "Oncogene",
+           categorize = FALSE)
 ```
 
-Next we'll explore the results.
+Next we'll explore the results. First, looking at how many significant genes at FDR 0.01.
+
+```{r, fig.height = 10, fig.width = 10}
+sig <- which(results(dd)$combined.pvalue.adj < 0.01)
+length(sig)
+```
+
+Next, we'll look at the classification of the top 100 genes. Note that we don't typically need to do this step separately since this can be done in one step on all the data - just for the sake of efficiency, we only carry out this step on the top 100.
 
 ```{r}
-results(dd)$
+top100 <- which(rank(results(dd)$combined.pvalue.adj, 
+                     ties = "random") <= 100)
+
+# classification of top 100 genes
+class100 <- results(scDD(sce[top100,], param = MulticoreParam(1), 
+             condition = "Oncogene",
+             categorize = TRUE))$DDcategory
 ```
+
+Next, we plot a set of top genes.
+
+```{r, fig.width = 15, fig.height = 10}
+rows <- 3
+cols <- 3
+par(mfrow=c(rows,cols))
+p <- vector("list", rows*cols)
+for (g in 1:length(p)){
+  p[[g]] <- sideViolin(normcounts(sce)[top100[g],],
+             sce$Oncogene, 
+             title.gene=paste0(rownames(sce)[top100[g]], 
+             ":", class100[g])) +
+    ylab("log(Corrected count + 1)")
+}
+multiplot(p[[1]], p[[2]], p[[3]], p[[4]],
+          p[[5]], p[[6]], p[[7]], p[[8]], p[[9]], cols=cols)
+```
+
 
 # Save object for later use
 
@@ -292,6 +330,24 @@ plotReducedDim(sce, use_dimred="PCA", ncomponents=3,
     colour_by="Plate") 
 ```
 
+## tSNE on noise
+
+Let's see what happens when we perform tSNE on random noise. Use the following matrix of 1000 features on 100 samples:
+
+```{r}
+set.seed(30)
+y <- matrix(rnorm(100000), ncol=100) 
+```
+
+Perform tSNE dimensional reduction and plot the first two components. See how much structure you can impose by varying the parameters of the algorithm. Hint: you can use the `Rtsne` package, and try varying the `perplexity` and/or other paramters.
+
+```{r}
+# your code here
+library(Rtsne)
+set.seed(1)
+t.out <- Rtsne(t(y), perplexity = 1)
+plot(t.out$Y[,1], t.out$Y[,2], pch=16)
+```
 
 ***
 

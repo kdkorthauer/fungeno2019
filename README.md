@@ -1,2 +1,17 @@
-# CSHL-2019-stat-methods-functional-genomics
-Course material for CSHL2019 short course on statistical methods for functional genomics: single-cell RNAseq and DNA methylation modules
+# Statistical Methods for Functional Genomics - CSHL 2019
+
+Welcome to Fun Geno!
+
+Here, you'll find course material for the 2019 CSHL short course on ["Statistical Methods for Functional Genomics"](https://meetings.cshl.edu/courses.aspx?course=c-data&year=19) for the modules on single-cell RNAseq and DNA methylation.
+
+## Single-cell RNA seq module
+
+### Slides
+
+### Workflows & exercises
+
+##  DNA methylation module
+
+### Slides
+
+### Workflows & exercises

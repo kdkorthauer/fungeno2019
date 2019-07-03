@@ -8,7 +8,7 @@ Here, you'll find course material for the 2019 CSHL short course on ["Statistica
 
 ### Slides
 
-[Intro to single-cell RNA-seq](https://kkorthauer.org/fungeno2019/0-intro-slides.html)([Rmd](https://kkorthauer.org/fungeno2019/0-intro-slides.Rmd))
+[Intro to single-cell RNA-seq](https://kkorthauer.org/fungeno2019/singlecell/slides/0-intro-slides.html)([Rmd](https://kkorthauer.org/fungeno2019/singlecell/slides/0-intro-slides.Rmd))
 
 ### Workflows & exercises
 

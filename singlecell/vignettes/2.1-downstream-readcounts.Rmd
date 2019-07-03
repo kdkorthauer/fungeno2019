@@ -11,7 +11,6 @@ bibliography: ref.bib
 ```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
 library(BiocStyle)
 knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
-knitr::opts_chunk$set(fig.asp=1)
 set.seed(651)
 ```
 
@@ -36,10 +35,14 @@ Each axis is a principal component (PC), where any early PC will explain more of
 We assume that biological processes involving co-regulated groups of genes will account for the most variance in the data.
 If this is the case, this process should be represented by one or more of the earlier PCs.
 In contrast, random technical noise affects each gene independently and will be represented by later PCs.
-The `denoisePCA()` function removes later PCs until the total discarded variance is equal to the sum of technical components for all genes used in the PCA, using the technical components estimated from `decomposeVar()`.
+The `denoisePCA()` function removes later PCs until the total discarded variance is equal to the sum of technical components for all genes used in the PCA, using the technical components estimated from `decomposeVar()`. This function will only use genes that have positive biological components, i.e., variances greater than the fitted trend.
+This guarantees that the total technical variance to be discarded will not be greater than the total variance in the data.
 
 ```{r}
 library(scran)
+var.fit <- trendVar(sce, parametric=TRUE, block=sce$Plate,
+    loess.args=list(span=0.3))
+var.out <- decomposeVar(sce, var.fit)
 sce <- denoisePCA(sce, technical=var.out, assay.type="corrected")
 dim(reducedDim(sce, "PCA")) 
 ```
@@ -47,30 +50,6 @@ dim(reducedDim(sce, "PCA"))
 The function returns a `SingleCellExperiment` object containing the PC scores for each cell in the `reducedDims` slot.
 The aim is to eliminate technical noise and enrich for biological signal in the retained PCs.
 This improves resolution of the underlying biology during downstream procedures such as clustering.
-
-__Comments from Aaron:__
-
-- `denoisePCA()` will only use genes that have positive biological components, i.e., variances greater than the fitted trend.
-This guarantees that the total technical variance to be discarded will not be greater than the total variance in the data.
-- Users can restrict `denoisePCA()` to use a smaller subset of genes by setting the `subset.row=` argument.
-This may be useful to only perform the PCA on genes with the largest biological components,
-thus increasing the signal-to-noise ratio of downstream analyses.
-See `r simpleSingleCell:::.link("var", "HVGs and the bias-variance trade-off", "here")` for a discussion of the considerations involved.
-- For the `technical=` argument, the function will also accept the trend function directly (i.e., `var.fit$trend`) or a vector of technical components per gene.
-The advantage of supplying the `DataFrame` from `decomposeVar()` is that it allows adjustments for the loss of residual degrees of freedom after batch correction.
-- It is also possible to obtain a low-rank approximation of the original expression matrix, capturing the variance equivalent to the retained PCs.
-This is useful for denoising prior to downstream procedures that require gene-wise expression values.
-
-```{r}
-sce2 <- denoisePCA(sce, technical=var.fit$trend, 
-    assay.type="corrected", value="lowrank") 
-assayNames(sce2)
-```
-
-```{r, echo=FALSE, results="hide"}
-rm(sce2)
-gc()
-```
 
 # Visualizing data in low-dimensional space
 
@@ -81,8 +60,9 @@ Cells with similar expression profiles should be located close together in the p
 In this case, we observe a clear separation of cells based on the oncogene induction status, consistent with the expected effects on the transcriptome.
 
 ```{r pcaplot416b-onco, fig.cap="Pairwise PCA plots of the first three PCs in the 416B dataset, constructed from normalized log-expression values of genes with positive biological components. Each point represents a cell, coloured according to oncogene induction status.", fig.width=9}
+library(scater)
 plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
-    colour_by="Oncogene") + fontsize
+    colour_by="Oncogene") 
 ```
 
 By comparison, we observe no clear separation of cells by batch (Figure \@ref(fig:pcaplot416b-batch)).
@@ -90,20 +70,14 @@ This indicates that our batch correction step using `removeBatchEffect()` was su
 
 ```{r pcaplot416b-batch, fig.cap="Pairwise PCA plots of the first three PCs in the 416B dataset, constructed from normalized log-expression values of genes with positive biological components. Each point represents a cell, coloured according to the plate of origin.", fig.width=9}
 plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
-    colour_by="Plate") + fontsize
+    colour_by="Plate") 
 ```
 
-Note that `plotReducedDim()` will use the PCA results that were already stored in `sce` by `denoisePCA()`.
+Note that for each visualization method, additional cell-specific information can be incorporated into the size or shape of each point.
+This is done using the `size_by=` and `shape_by=` arguments in most plotting functions. Also note that `plotReducedDim()` will use the PCA results that were already stored in `sce` by `denoisePCA()`.
 This allows us to rapidly generate new plots with different aesthetics, without repeating the entire PCA computation. 
 Similarly, `plotPCA()` will use existing results if they are available in the `SingleCellExperiment`, and will recalculate them otherwise.
 Users should set `rerun=TRUE` to forcibly recalculate the PCs in the presence of existing results.
-
-__Comments from Aaron:__
-
-- For each visualization method, additional cell-specific information can be incorporated into the size or shape of each point.
-This is done using the `size_by=` and `shape_by=` arguments in most plotting functions.
-- More components can be shown but these are usually less informative as they explain less of the variance. 
-They are also often more difficult to interpret as they are defined to be orthogonal to earlier PCs (and thus dependent on what is detected in those PCs).
 
 ## With _t_-SNE
 
@@ -118,13 +92,13 @@ We set `use_dimred="PCA"` to perform the _t_-SNE on the low-rank approximation o
 ```{r tsneplot416b, fig.cap="_t_-SNE plots constructed from the denoised PCs in the 416B dataset, using a range of perplexity values. Each point represents a cell, coloured according to its oncogene induction status. Bars represent the coordinates of the cells on each axis.", fig.width=15, fig.asp=0.5}
 set.seed(100)
 out5 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=5),
-    colour_by="Oncogene") + fontsize + ggtitle("Perplexity = 5")
+    colour_by="Oncogene")  + ggtitle("Perplexity = 5")
 set.seed(100)
 out10 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=10),
-    colour_by="Oncogene") + fontsize + ggtitle("Perplexity = 10")
+    colour_by="Oncogene")  + ggtitle("Perplexity = 10")
 set.seed(100)
 out20 <- plotTSNE(sce, run_args=list(use_dimred="PCA", perplexity=20),
-    colour_by="Oncogene") + fontsize + ggtitle("Perplexity = 20")
+    colour_by="Oncogene")  + ggtitle("Perplexity = 20")
 multiplot(out5, out10, out20, cols=3)
 ```
 
@@ -142,12 +116,7 @@ sce <- runTSNE(sce, use_dimred="PCA", perplexity=20)
 reducedDimNames(sce)
 ```
 
-There are many other dimensionality reduction techniques that we do not consider here but could also be used, e.g., multidimensional scaling, diffusion maps.
-These have their own advantages and disadvantages -- for example, diffusion maps (see `plotDiffusionMap`) place cells along a continuous trajectory and are suited for visualizing graduated processes like differentiation [@angerer2016destiny].
-
-__Comments from Aaron:__
-
-- A good guide on how to interpret _t_-SNE plots can be found at http://distill.pub/2016/misread-tsne/.
+Recall that there are many other dimensionality reduction techniques that we do not consider here but could also be used, e.g., multidimensional scaling, UMAP. A good guide on how to interpret _t_-SNE plots can be found at http://distill.pub/2016/misread-tsne/.
 This demonstrates how distances between clusters in the 2-dimensional embedding have little meaning, as does the apparent "size" (i.e., spread) of the clusters.
 
 # Clustering cells into putative subpopulations
@@ -189,7 +158,7 @@ Adjacent cells are generally assigned to the same cluster, indicating that the c
 
 ```{r tsnecluster416b, fig.cap="_t_-SNE plot of the denoised PCs of the 416B dataset. Each point represents a cell and is coloured according to the cluster identity to which it was assigned."}
 sce$cluster <- factor(my.clusters)
-plotTSNE(sce, colour_by="cluster") + fontsize
+plotTSNE(sce, colour_by="cluster") 
 ```
 
 We check the separatedness of the clusters using the silhouette width (Figure \@ref(fig:silhouette416b)).
@@ -218,15 +187,8 @@ Most cells have relatively small silhouette positive widths in Figure \@ref(fig:
 This may be symptomatic of over-clustering where clusters that are clearly defined on oncogene induction status are further split into subsets that are less well separated.
 Nonetheless, we will proceed with the current clustering scheme in `my.clusters`, as it provides reasonable partitions for further characterization of heterogeneity.
 
-```{r echo=FALSE, results='hide'}
-gc()
-```
-
-**Comments from Aaron:**
-
-- An alternative clustering strategy is to use a matrix of distances derived from correlations (e.g., as in `quickCluster`).
-This is more robust to noise and normalization errors, but is also less sensitive to subtle changes in the expression profiles. 
-- Both Ward's criterion and complete linkage yield spherical, compact clusters.
+An alternative clustering strategy is to use a matrix of distances derived from correlations (e.g., as in `quickCluster`).
+This is more robust to noise and normalization errors, but is also less sensitive to subtle changes in the expression profiles. Both Ward's criterion and complete linkage yield spherical, compact clusters.
 In particular, complete linkage favours the formation of clusters with the same diameter.
 This may be desirable in some cases but is less appropriate when subpopulations differ in their variance.
 Thus, we typically use Ward's criterion for our initial clustering. 
@@ -236,8 +198,8 @@ Of course, it is simple (and recommended) to try other approaches provided that 
 
 Once putative subpopulations are identified by clustering, we can identify marker genes for each cluster using the `findMarkers` function.
 This performs Welch $t$-tests on the log-expression values for every gene and between every pair of clusters [@soneson2018bias].
-The aim is to test for DE in each cluster compared to the others while blocking on uninteresting factors such as the plate of origin (see `r simpleSingleCell:::.link("de", "Blocking on uninteresting factors of variation", "here")` for details).
-The top DE genes are likely to be good candidate markers as they can effectively distinguish between cells in different clusters.
+The aim is to test for DE in each cluster compared to the others while blocking on uninteresting factors such as the plate of origin.
+The top DE genes are likely to be good candidate markers as they can effectively distinguish between cells in different clusters. Optionally, by setting `direction="up"`, `findMarkers` will only return genes that are upregulated in each cluster compared to the others. 
 
 ```{r}
 markers <- findMarkers(sce, my.clusters, block=sce$Plate)
@@ -248,22 +210,9 @@ This allows a set of marker genes to be easily defined by taking the top DE gene
 For example, to construct a marker set for cluster 1 from the top 10 genes of each comparison, one would filter `marker.set` to retain rows with `Top` less than or equal to 10.
 Other statistics are also reported for each gene, including the adjusted $p$-values (see below) and the log-fold changes relative to every other cluster.
 
-```{r, echo=FALSE, results="hide"}
-old.digits <- options()$digits
-options(digits=3)
-```
-
 ```{r}
 marker.set <- markers[["1"]]
 head(marker.set, 10)
-```
-
-```{r, echo=FALSE, results="hide"}
-# Crashing if cluster 1 is not what we think it is; 
-# thus, avoid mismatch between text and results.
-stopifnot(all(sapply(marker.set["Myh11",-(1:3)], sign)==1))
-stopifnot(all(sapply(marker.set["Mcm2",-(1:3)], sign)==-1))
-options(digits=old.digits)
 ```
 
 We save the list of candidate marker genes for further examination.
@@ -294,22 +243,31 @@ A combination of markers can then be chosen to characterize a subpopulation, whi
 
 We strongly recommend selecting some markers for use in validation studies with an independent replicate population of cells.
 The aim is to identify a corresponding subset of cells that express the upregulated markers and do not express the downregulated markers.
-Ideally, a different technique for quantifying expression would also be used during validation, e.g., fluorescent _in situ_ hybridisation or quantitative PCR.
-This confirms that the subpopulation genuinely exists and is not an artifact of scRNA-seq or the computational analysis.
 
-__Comments from Aaron:__
+# Differential expression
 
-- By setting `direction="up"`, `findMarkers` will only return genes that are upregulated in each cluster compared to the others.
-This is convenient in highly heterogeneous populations to focus on genes that can immediately identify each cluster.
-While lack of expression may also be informative, it is less useful for positive identification.
-- `findMarkers` can also be directed to find genes that are DE between the chosen cluster and _all_ other clusters.
-This should be done by setting `pval.type="all"`, which defines the p-value for each gene as the maximum value across all pairwise comparisons involving the chosen cluster.
-Combined with `direction="up"`, this can be used to identify unique markers for each cluster.
-However, this is sensitive to overclustering, as unique marker genes will no longer exist if a cluster is split into two smaller subclusters.
-- It must be stressed that the (adjusted) _p_-values computed here cannot be properly interpreted as measures of significance.
-This is because the clusters have been empirically identified from the data, see `r simpleSingleCell:::.link("de", "Misinterpretation of DE $p$-values", "here")`.
+Here will identify differentially expressed genes between induced and control cells. Specifically, we'll identify _differentially distributed_ genes using the `r Biocpkg("scDD")` package [@korthauer2016statistical]. This method expects normalized counts (not log-scale) in the `normcounts` slot. Since we also want to adjust for plate effects, we'll add the `corrected` counts back-transformed to the original scale.
 
-# Concluding remarks
+```{r}
+assays(sce)$normcounts <- 2^assays(sce)$corrected
+```
+
+Next we run the `scDD()` function. Note that the function will by default use multiple cores, so we should specify the type of parallelization and number of cores using the `r Biocpkg("BiocParallel")` package. Here we specify use of a single core with the `MulticoreParam()` function.
+
+```{r}
+library(scDD)
+library(BiocParallel)
+
+dd <- scDD(sce, param = MulticoreParam(1), condition = "Oncogene")
+```
+
+Next we'll explore the results.
+
+```{r}
+results(dd)$
+```
+
+# Save object for later use
 
 Once the basic analysis is completed, it is often useful to save the `SingleCellExperiment` object to file with the `saveRDS` function.
 The object can then be easily restored into new R sessions using the `readRDS` function.
@@ -319,19 +277,25 @@ This allows further work to be conducted without having to repeat all of the pro
 saveRDS(file="416B_data.rds", sce)
 ```
 
-A variety of methods are available to perform more complex analyses on the processed expression data.
-For example, cells can be ordered in pseudotime (e.g., for progress along a differentiation pathway) with `r Biocpkg("monocle")` [@trapnell2014dynamics] or `r Biocpkg("TSCAN")` [@ji2016tscan]; 
-cell-state hierarchies can be characterized with the `r Biocpkg("sincell")` package [@julia2015sincell];
-and oscillatory behaviour can be identified using `r Biocpkg("Oscope")` [@leng2015oscope].
-HVGs can be used in gene set enrichment analyses to identify biological pathways and processes with heterogeneous activity, using packages designed for bulk data like `r Biocpkg("topGO")` or with dedicated single-cell methods like `r Biocpkg("scde")` [@fan2016characterizing].
-Full descriptions of these analyses are outside the scope of this workflow, so interested users are advised to consult the relevant documentation.
+***
+# Exercises
 
-```{r, echo=FALSE, results='hide'}
-gc()
+## PCA on uncorrected data
+
+Recreate the PCA plots for the first three dimensions, colored by plate, but this time using the uncorrected log counts in the `logcounts` assays slot (instead of the `corrected` counts that were adjusted for batch in the previous Rmd). Which PC contains the most variation in plate?
+
+```{r}
+# your code here
+sce <- denoisePCA(sce, technical=var.out, assay.type="logcounts")
+dim(reducedDim(sce, "PCA")) 
+plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
+    colour_by="Plate") 
 ```
 
-All software packages used in this workflow are publicly available from the Comprehensive R Archive Network (https://cran.r-project.org) or the Bioconductor project (http://bioconductor.org).
-The specific version numbers of the packages used are shown below, along with the version of the R installation.
+
+***
+
+# Session Information
 
 ```{r}
 sessionInfo()

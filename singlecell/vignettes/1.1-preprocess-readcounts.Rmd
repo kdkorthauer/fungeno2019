@@ -11,7 +11,6 @@ bibliography: ref.bib
 ```{r, echo=FALSE, message=FALSE}
 library(BiocStyle)
 knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
-knitr::opts_chunk$set(fig.asp=1)
 set.seed(651)
 ```
 
@@ -99,7 +98,6 @@ sce <- sce[!is.sirv,]
 summary(is.sirv)
 ```
 
-
 ## Incorporating cell-based annotation
 
 We load in the metadata for each library/cell from the `sdrf.txt` file.
@@ -123,11 +121,9 @@ colData(sce)$Plate <- factor(metadata[["Factor Value[block]"]])
 pheno <- metadata[["Factor Value[phenotype]"]]
 levels(pheno) <- c("induced", "control")
 colData(sce)$Oncogene <- pheno
-table(colData(sce)$Oncogene, colData(sce)$Plate)
 ```
 
-
-## Incorporating cell-based annotation
+## Incorporating gene-based annotation
 
 Feature-counting tools typically report genes in terms of standard identifiers from Ensembl or Entrez.
 These identifiers are used as they are unambiguous and highly stable.
@@ -160,9 +156,7 @@ library(TxDb.Mmusculus.UCSC.mm10.ensGene)
 location <- mapIds(TxDb.Mmusculus.UCSC.mm10.ensGene, keys=rowData(sce)$ENSEMBL, 
     column="CDSCHROM", keytype="GENEID")
 rowData(sce)$CHR <- location
-summary(location=="chrM")
 ```
-
 
 # Quality control on the cells 
 
@@ -265,6 +259,7 @@ sce <- sce[,keep]
 dim(sce)
 ```
 
+
 # Examining gene-level expression metrics
 
 We examine the identities of the most highly expressed genes (Figure \@ref(fig:topgene416b)).
@@ -272,8 +267,8 @@ This should generally be dominated by constitutively expressed transcripts, such
 The presence of other classes of features may be cause for concern if they are not consistent with expected biology.
 For example, a top set containing many spike-in transcripts suggests that too much spike-in RNA was added during library preparation, while the absence of ribosomal proteins and/or the presence of their pseudogenes are indicative of suboptimal alignment.
 
-```{r topgene416b, fig.asp=1.2, fig.wide=TRUE, fig.cap="Percentage of total counts assigned to the top 50 most highly-abundant features in the 416B dataset. For each feature, each bar represents the percentage assigned to that feature for a single cell, while the circle represents the average across all cells. Bars are coloured by the total number of expressed features in each cell, while circles are coloured according to whether the feature is labelled as a control feature."}
-plotHighestExprs(sce, n=50)
+```{r topgene416b, fig.wide=TRUE, fig.cap="Percentage of total counts assigned to the top 25 most highly-abundant features in the 416B dataset. For each feature, each bar represents the percentage assigned to that feature for a single cell, while the circle represents the average across all cells. Bars are coloured by the total number of expressed features in each cell, while circles are coloured according to whether the feature is labelled as a control feature."}
+plotHighestExprs(sce, n=25)  + theme(text = element_text(size=14))
 ```
 
 Another useful metric is the average count for each gene, computed across all cells in the dataset.
@@ -299,15 +294,6 @@ smoothScatter(log10(ave.counts), num.cells, ylab="Number of cells",
     xlab=expression(Log[10]~"average count"))
 ```
 
-We can look at the same quantity, but averaging just over non-zero cells. Here we
-manually calculate the average of nonzero cells.
-
-```{r nexprshist416c, fig.cap="The number of cells expressing each gene in the 416B dataset, plotted against the log-average nonzero count. Intensity of colour corresponds to the number of genes at any given location."}
-ave.nz.counts <- apply(counts(sce), 1, function(x) mean(x[x>0]))
-smoothScatter(log10(ave.nz.counts), num.cells, ylab="Number of cells", 
-    xlab=expression(Log[10]~"average nonzero count"))
-```
-
 We remove genes that are not expressed in any cell to avoid unnecessary computational work in downstream steps. 
 Further filtering may be applied on a step-by-step basis within specific functions - 
 see comments `r simpleSingleCell:::.link("misc", "comments on filtering by abundance", "here")` for a more detailed discussion.
@@ -328,8 +314,9 @@ This is often done by assuming that most genes are not differentially expressed 
 Any systematic difference in count size across the non-DE majority of genes between two cells is assumed to represent bias and is removed by scaling.
 More specifically, "size factors" are calculated that represent the extent to which counts should be scaled in each library.
 
-Size factors can be computed with several different approaches, e.g., using the `estimateSizeFactorsFromMatrix` function in the `r Biocpkg("DESeq2")` package [@anders2010differential;@love2014moderated], or with the `calcNormFactors` function [@robinson2010scaling] in the `r Biocpkg("edgeR")` package.
+Size factors can be computed with several different approaches, e.g., using the `estimateSizeFactorsForMatrix` function in the `r Biocpkg("DESeq2")` package [@anders2010differential;@love2014moderated], or with the `calcNormFactors` function [@robinson2010scaling] in the `r Biocpkg("edgeR")` package.
 However, single-cell data can be problematic for these bulk data-based methods due to the dominance of low and zero counts.
+
 To overcome this, we pool counts from many cells to increase the size of the counts for accurate size factor estimation [@lun2016pooling].
 Pool-based size factors are then "deconvolved" into cell-based factors for normalization of each cell's expression profile.
 
@@ -352,6 +339,7 @@ plot(sce$total_counts/1e6, sizeFactors(sce), log="xy",
 legend("bottomright", col=c("red", "black"), pch=16, cex=1.2,
     legend=levels(sce$Oncogene))
 ```
+
 
 ## Computing separate size factors for spike-in transcripts
 
@@ -392,10 +380,6 @@ This is usually more relevant than the absolute differences in coverage, which n
 The log-transformation also provides some measure of variance stabilization [@law2014voom], so that high-abundance genes with large variances do not dominate downstream analyses.
 The computed values are stored as an `"logcounts"` matrix in addition to the other assay elements.
 
-```{r, echo=FALSE, results="hide"}
-gc()
-```
-
 ## Using SCnorm to estimate the count-depth relationship
 
 As pointed out by [@bacher2017scnorm], global size factors for all genes may be problematic 
@@ -406,7 +390,7 @@ Instead, we can try computing cell- and gene-specific size factors using `r Bioc
 First, we examine the count-depth relationship in raw data. For the sake of computational
 efficiency, we'll only work with a random subset of 2000 genes in this section.
 
-```{r, fig.height=2.5}
+```{r, fig.height = 4, fig.width = 8}
 # random subset of 2000 genes
 set.seed(9)
 ix <- sample(seq_len(nrow(sce)), 2000, replace=FALSE)
@@ -419,7 +403,7 @@ countDeptEst <- plotCountDepth(Data = sce[ix,],
 
 Next, we examine the relationship in scran-normalized data.
 
-```{r,fig.height=2.5}
+```{r, fig.height = 4, fig.width = 8}
 countDeptEst <- plotCountDepth(Data = sce[ix,], 
                                NormalizedData = assays(sce)$logcounts[ix,],
                                FilterCellProportion = .1, 
@@ -428,7 +412,7 @@ countDeptEst <- plotCountDepth(Data = sce[ix,],
 
 We instead carry out normalization using SCnorm and replot the slopes of the count-depth relationship. For the sake of compuational efficiency, we set K=3 (not recommended in practice).
 
-```{r, fig.height=2.5}
+```{r, fig.height = 4, fig.width = 8}
 sce.scnorm <- SCnorm(Data = sce[ix,],
                      Conditions = colData(sce)$PlateOnco, K=3,
                      FilterCellNum = 10, NCores=1, reportSF = TRUE)
@@ -484,12 +468,19 @@ chosen.genes <- order(var.out$bio, decreasing=TRUE)[1:10]
 plotExpression(sce, features=rownames(var.out)[chosen.genes]) 
 ```
 
+
 # Removing the batch effect
 
 As previously mentioned, the data were collected on two plates.
 Small uncontrollable differences in processing between plates can result in a batch effect, i.e., systematic differences in expression between cells on different plates.
 Such differences are not interesting and can be removed by applying the `removeBatchEffect()` function from the `r Biocpkg("limma")` package [@ritchie2015limma].
 This removes the effect of the plate of origin while accounting for the (interesting) effect of oncogene induction.
+
+`removeBatchEffect()` performs a linear regression and sets the coefficients corresponding to the blocking factors to zero.
+This is effective provided that the population composition within each batch is known (and supplied as `design=`) or identical across batches.
+Such an assumption is reasonable for this dataset, involving a homogeneous cell line population on both plates.
+However, in most scRNA-seq applications, the factors of variation are not identical across batches and not known in advance.
+
 
 ```{r}
 library(limma)
@@ -502,15 +493,7 @@ Manual batch correction is necessary for downstream procedures that are not mode
 However, if an analysis method can accept a design matrix, blocking on nuisance factors in the design matrix is preferable to using `removeBatchEffect()`.
 This is because the latter does not account for the loss of residual degrees of freedom, nor the uncertainty of estimation of the blocking factor terms.
 
-**Comments from Aaron:**
-
-- `removeBatchEffect()` performs a linear regression and sets the coefficients corresponding to the blocking factors to zero.
-This is effective provided that the population composition within each batch is known (and supplied as `design=`) or identical across batches.
-Such an assumption is reasonable for this dataset, involving a homogeneous cell line population on both plates.
-However, in most scRNA-seq applications, the factors of variation are not identical across batches and not known in advance.
-This motivates the use of more sophisticated batch correction methods such as `mnnCorrect()`.
-
-# Concluding remarks
+# Save object for later use
 
 Once the preprocessing is completed, it is often useful to save the `SingleCellExperiment` object to file with the `saveRDS` function.
 The object can then be easily restored into new R sessions using the `readRDS` function.
@@ -520,19 +503,111 @@ This allows further work to be conducted without having to repeat all of the pro
 saveRDS(file="416B_postQC.rds", sce)
 ```
 
-A variety of methods are available to perform more complex analyses on the processed expression data.
-For example, cells can be ordered in pseudotime (e.g., for progress along a differentiation pathway) with `r Biocpkg("monocle")` [@trapnell2014dynamics] or `r Biocpkg("TSCAN")` [@ji2016tscan]; 
-cell-state hierarchies can be characterized with the `r Biocpkg("sincell")` package [@julia2015sincell];
-and oscillatory behaviour can be identified using `r Biocpkg("Oscope")` [@leng2015oscope].
-HVGs can be used in gene set enrichment analyses to identify biological pathways and processes with heterogeneous activity, using packages designed for bulk data like `r Biocpkg("topGO")` or with dedicated single-cell methods like `r Biocpkg("scde")` [@fan2016characterizing].
-Full descriptions of these analyses are outside the scope of this workflow, so interested users are advised to consult the relevant documentation.
+***
+# Exercises
 
-```{r, echo=FALSE, results='hide'}
-gc()
+For these exercises, use the pre-QC `SingleCellExperiment` object that we saved above.
+
+```{r}
+sce <- readRDS("416B_preQC.rds")
 ```
 
-All software packages used in this workflow are publicly available from the Comprehensive R Archive Network (https://cran.r-project.org) or the Bioconductor project (http://bioconductor.org).
-The specific version numbers of the packages used are shown below, along with the version of the R installation.
+## How many cells?
+
+How many cells were on each plate? How many cells were induced? Create a 2x2 table that displays the number of cells in each plate and phenotype combination.
+
+```{r}
+# your code here
+table(colData(sce)$Oncogene, colData(sce)$Plate)
+```
+
+## What proportion of measurements are zero?
+
+```{r}
+# your code here
+sum(counts(sce)==0)/length(counts(sce))
+```
+
+## How many mitochondrial genes?
+
+How many mitochondrial genes are present?
+
+```{r}
+# your code here
+summary(location=="chrM")
+```
+
+## How many cells were removed?
+
+How many outlier cells were removed in total?
+
+```{r}
+# your code here
+sum(!keep)
+```
+
+## Average expressed count versus probability of expression
+
+Examine the relationship between the average read count and the number of expressed cells, but taking the average count only among *expressed* cells (with count > 0). Hint: manually calculate the average count among nonzero cells, and plot against `num.cells` as before. 
+
+```{r}
+# your code here
+ave.nz.counts <- apply(counts(sce), 1, function(x) mean(x[x>0]))
+smoothScatter(log10(ave.nz.counts), num.cells, ylab="Number of cells", 
+    xlab=expression(Log[10]~"average nonzero count"))
+```
+
+## Compare size factors
+
+For this exercise, it is helpful to use the post-QC `SingleCellExperiment` object.
+
+```{r}
+sce <- readRDS("416B_postQC.rds")
+```
+
+Compute DESeq2 size factors using `estimateSizeFactorsForMatrix`.
+
+```{r}
+# your code here
+library(DESeq2)
+sf <- estimateSizeFactorsForMatrix(counts(sce))
+```
+
+How do they compare with the pooled size factor estimates? 
+```{r}
+# your code here
+plot(sf, sizeFactors(sce))
+```
+
+How many genes are used in the calcualtion of DESeq2 size factors? 
+
+```{r}
+# your code here
+sum(apply(counts(sce), 1, function(x) all(x>0)))
+```
+
+## Count-depth relationship
+
+Pick a gene with high average expression. Plot the relationship between sequencing depth (size factors) and count of that gene.
+
+```{r}
+# your code here
+plot(sf, counts(sce)[which.max(rowMeans(counts(sce))) ,])
+```
+
+## Highly variable genes without transformation
+
+What would be the result of selecting the most highly variable genes without log transformation? Plot the distribution of expression values for the genes with the largest (untransformed) variance.
+
+```{r}
+# your code here
+chosen.genes.raw <- order(rowVars(counts(sce)), decreasing=TRUE)[1:10]
+plotExpression(sce, features=rownames(sce)[chosen.genes.raw]) 
+```
+
+***
+
+# Session Info
 
 ```{r}
 sessionInfo()

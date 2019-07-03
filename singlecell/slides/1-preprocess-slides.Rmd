@@ -28,7 +28,7 @@ source("./src/smartseq.R")
 
 - standard QC on raw reads (adapter/quality trim)
 - mapping to reference genome - bulk tools appropriate (e.g. Salmon, STAR, RSEM, etc)
-- count reads per transcript/gene - bulk tools appropriate (e.g. Subread)
+- count reads per transcript/gene - bulk tools widely used (e.g. Subread), specialized tools available (e.g. [Alevin](https://doi.org/10.1186/s13059-019-1670-y) for droplet data)
 - collapse UMIs & demultiplex (if applicable) -> [scPipe]( http://bioconductor.org/packages/scPipe/)
 
 ```{r, out.width = "200px", show=TRUE, fig.align="center"}

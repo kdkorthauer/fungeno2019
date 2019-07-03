@@ -33,6 +33,8 @@ Recall that this involves a random initialization when `BSPARAM=IrlbaParam()`, w
 
 ```{r}
 library(scran)
+library(BiocSingular)
+new.trend <- makeTechTrend(x=sce)
 set.seed(1000)
 sce <- denoisePCA(sce, technical=new.trend, BSPARAM=IrlbaParam())
 ncol(reducedDim(sce, "PCA"))
@@ -55,6 +57,7 @@ Again, note that we set `use_dimred=` to perform _t_-SNE on the denoised express
 
 ```{r tsneplot-init, fig.cap="_t_-SNE plots constructed from the denoised PCs of the PBMC dataset. Each point represents a cell and is coloured according to the log-number of expressed features."}
 set.seed(1000)
+library(scater)
 sce <- runTSNE(sce, use_dimred="PCA", perplexity=30)
 plotTSNE(sce, colour_by="log10_total_features_by_counts")
 ```
@@ -91,12 +94,6 @@ plotTSNE(sce, colour_by="Cluster")
 
 # Marker gene detection
 
-```{r, echo=FALSE, results="hide"}
-# Hidden variables for use in text or hidden chunks,
-# to avoid the need for manual changes.
-chosen.platelets <- 12 
-```
-
 We detect marker genes for each cluster using `findMarkers()`.
 Again, we only look at upregulated genes in each cluster, as these are more useful for positive identification of cell types in a heterogeneous population.
 
@@ -104,26 +101,16 @@ Again, we only look at upregulated genes in each cluster, as these are more usef
 markers <- findMarkers(sce, clusters=sce$Cluster, direction="up")
 ```
 
-We examine the markers for cluster `r chosen.platelets` in more detail.
+We examine the markers for cluster 11 in more detail.
 The upregulation of genes such as _PF4_ and _PPBP_ suggests that this cluster contains platelets or their precursors.
 
 ```{r}
-marker.set <- markers[["12"]]
+marker.set <- markers[["11"]]
 head(marker.set[,1:8], 10) # only first 8 columns, for brevity
 ```
+This is confirmed in Figure \@ref(fig:heatmap), where the transcriptional profile of cluster 11 is clearly distinct from the others.
 
-```{r, echo=FALSE, results="hide"}
-# Checking 'marker.set' and 'chosen.platelets' are consistent.
-stopifnot(identical(marker.set, markers[[chosen.platelets]]))
-
-# Checking the cluster is what we wanted.
-pf4 <- sapply(marker.set["PF4",-(1:3)], sign)
-stopifnot(all(pf4==1))
-```
-
-This is confirmed in Figure \@ref(fig:heatmap), where the transcriptional profile of cluster `r chosen.platelets` is clearly distinct from the others.
-
-```{r heatmap, fig.wide=TRUE, fig.cap=sprintf("Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster %s in the PBMC dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend.", chosen.platelets)}
+```{r heatmap, fig.wide=TRUE, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 11 in the PBMC dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend."}
 chosen <- rownames(marker.set)[marker.set$Top <= 10]
 plotHeatmap(sce, features=chosen, exprs_values="logcounts", 
     zlim=5, center=TRUE, symmetric=TRUE, cluster_cols=FALSE,

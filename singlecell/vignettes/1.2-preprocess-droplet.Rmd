@@ -11,9 +11,10 @@ bibliography: ref.bib
 ```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
 library(BiocStyle)
 knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
-knitr::opts_chunk$set(fig.asp=1)
 set.seed(651)
 ```
+
+Adapted from the [singleSingleCell Bioconductor workflow](https://www.bioconductor.org/help/workflows/simpleSingleCell/) by Aaron Lun, Davis McCarthy, and John Marioni.
 
 # Overview 
 
@@ -74,7 +75,6 @@ library(EnsDb.Hsapiens.v86)
 location <- mapIds(EnsDb.Hsapiens.v86, keys=rowData(sce)$ID, 
     column="SEQNAME", keytype="GENEID")
 rowData(sce)$CHR <- location
-summary(location=="MT")
 ```
 
 # Calling cells from empty droplets
@@ -119,32 +119,9 @@ We then subset our `SingleCellExperiment` object to retain only the detected cel
 sce <- sce[,which(e.out$FDR <= 0.001)]
 ```
 
-**Comments from Aaron:**
-
-- `emptyDrops()` computes Monte Carlo $p$-values based on a Dirichlet-multinomial model of sampling molecules into droplets.
-These $p$-values are stochastic so it is important to set the random seed to obtain reproducible results.
-- The stability of the Monte Carlo $p$-values depends on the number of iterations used to compute them. 
-This is controlled using the `niters=` argument in `emptyDrops()`, set to a default of 10000 for speed.
-Larger values improve stability at the cost of time only, so users should set `niters=` to the largest value they are willing to tolerate.
-- The function assumes that cell barcodes with total UMI counts below a certain threshold (`lower=100` by default) correspond to empty droplets, 
-and uses them to estimate the ambient expression profile.
-By definition, these barcodes cannot be cell-containing droplets and are excluded from the hypothesis testing, hence the `NA`s in the output.
-- Users wanting to use the cell calling algorithm from the _CellRanger_ pipeline can call `defaultDrops()` instead.
-This tends to be quite conservative as it often discards genuine cells with low RNA content (and thus low total counts).
-It also requires an estimate of the expected number of cells in the experiment.
-
 ## Examining cell-calling diagnostics
 
-The number of Monte Carlo iterations (specified by the `niters` argument in `emptyDrops()`) determines the lower bound for the _p_values [@phipson2010permutation].
-The `Limited` field in the output indicates whether or not the computed _p_-value for a particular barcode is bounded by the number of iterations.
-If any non-significant barcodes are `TRUE` for `Limited`, we may need to increase the number of iterations.
-A larger number of iterations will often result in a lower _p_-value for these barcodes, which may allow them to be detected after correcting for multiple testing.
-
-```{r}
-table(Sig=e.out$FDR <= 0.01, Limited=e.out$Limited)
-```
-
-As mentioned above, `emptyDrops()` assumes that barcodes with low total UMI counts are empty droplets.
+As mentioned above, `emptyDrops()` assumes that barcodes with very low total UMI counts are empty droplets.
 Thus, the null hypothesis should be true for all of these barcodes. 
 We can check whether the hypothesis test holds its size by examining the distribution of $p$-values for low-total barcodes.
 Ideally, the distribution should be close to uniform.
@@ -167,7 +144,7 @@ The previous step only distinguishes cells from empty droplets, but makes no sta
 It is entirely possible for droplets to contain damaged or dying cells, which need to be removed prior to downstream analysis.
 We compute some QC metrics using `calculateQCMetrics()` [@mccarthy2017scater] and examine their distributions in Figure \@ref(fig:qchist).
 
-```{r qchist, fig.width=10, fig.asp=0.5, fig.cap="Histograms of QC metric distributions in the PBMC dataset."}
+```{r qchist, fig.width=10, fig.height=4, fig.cap="Histograms of QC metric distributions in the PBMC dataset."}
 sce <- calculateQCMetrics(sce, feature_controls=list(Mito=which(location=="MT")))
 par(mfrow=c(1,3))
 hist(sce$log10_total_counts, breaks=20, col="grey80",
@@ -178,7 +155,7 @@ hist(sce$pct_counts_Mito, breaks=20, col="grey80",
 	xlab="Proportion of reads in mitochondrial genes")
 ```
 
-Ideally, we would remove cells with low library sizes or total number of expressed features as described `r simpleSingleCell:::.link("reads", "Quality control on the cells", "previously")`.
+Ideally, we would remove cells with low library sizes or total number of expressed features.
 However, this would likely remove cell types with low RNA content, especially in a heterogeneous PBMC population with many different cell types.
 Thus, we use a more relaxed strategy and only remove cells with large mitochondrial proportions, using it as a proxy for cell damage.
 (Keep in mind that droplet-based datasets usually do not have spike-in RNA.)
@@ -189,21 +166,9 @@ sce <- sce[,!high.mito]
 summary(high.mito)
 ```
 
-**Comments from Aaron:**
-
-- The above justification for using a more relaxed filter is largely retrospective.
-In practice, we may not know _a priori_ the degree of population heterogeneity and whether it manifests in the QC metrics.
-We recommend performing an initial analysis with some QC, and then relaxing the filter (or making it more stringent) based on further diagnostics.
-See `r simpleSingleCell:::.link("qc", "Checking for discarded cell types", "here")` for an example of a potential diagnostic approach.
-- Removal of cells with high mitochondrial content assumes that the damage to the cell membrane is modest enough that the mitochondria are retained.
-It is possible for the cells to be so damaged that all cytoplasmic content is lost and only the stripped nucleus remains for sequencing.
-This manifests as mitochondrial proportions of zero, usually accompanied by low library sizes/numbers of expressed genes and possibly low ribosomal protein gene expression.
-If a cluster of such cells is observed in the data, they can be removed by using `isOutlier()` on the mitochondrial proportions with `type="lower"` and `log=TRUE`
-(to improve resolution around zero).
-
 # Examining gene expression
 
-The average expression of each gene is much lower here compared to the previous datasets (Figure \@ref(fig:abhist)).
+The average expression of each gene is much lower here compared to the previous dataset (Figure \@ref(fig:abhist)).
 This is due to the reduced coverage per cell when thousands of cells are multiplexed together for sequencing.
 
 ```{r abhist, fig.cap="Histogram of the log~10~-average counts for each gene in the PBMC dataset."}
@@ -214,14 +179,20 @@ hist(log10(ave), col="grey80")
 
 The set of most highly expressed genes is dominated by ribosomal protein and mitochondrial genes (Figure \@ref(fig:highexpr)), as expected.
 
-```{r highexpr, fig.wide=TRUE, fig.asp=1.5, fig.cap="Percentage of total counts assigned to the top 50 most highly-abundant features in the PBMC dataset. For each feature, each bar represents the percentage assigned to that feature for a single cell, while the circle represents the average across all cells. Bars are coloured by the total number of expressed features in each cell."}
-plotHighestExprs(sce, n=50)
+```{r highexpr, fig.wide=TRUE, fig.cap="Percentage of total counts assigned to the top 25 most highly-abundant features in the PBMC dataset. For each feature, each bar represents the percentage assigned to that feature for a single cell, while the circle represents the average across all cells. Bars are coloured by the total number of expressed features in each cell."}
+plotHighestExprs(sce, n=25) + theme(text = element_text(size=14))
 ```
 
 # Normalizing for cell-specific biases
 
-We perform some pre-clustering as described `r simpleSingleCell:::.link("umis", "Normalization of cell-specific biases", label="previously")`.
-Recall that we need to set the seed when using `BSPARAM=IrlbaParam()` due to the randomness of `r CRANpkg("irlba")`. 
+We normalize endogenous genes using the `computeSumFactors()` function with an additional pre-clustering step [@lun2016pooling].
+Cells in each cluster are normalized separately, and the size factors are rescaled to be comparable across clusters.
+This avoids the need to assume that most genes are non-DE across the entire population - only a non-DE majority is required between pairs of clusters.
+Scaling is then performed to ensure that size factors of cells in different clusters are comparable.
+
+ We speed up clustering by performing fast dimensionality reduction and then clustering cells on the PCs.
+This is the purpose of the `BSPARAM=` argument, which instructs `quickCluster()` to use a approximate algorithm for PCA^[Using methods from the `r CRANpkg("irlba")` package.].
+The approximation relies on stochastic initialization so we need to set the random seed for reproducibility - see below for more detail.
 
 ```{r}
 library(scran)
@@ -232,8 +203,8 @@ table(clusters)
 ```
 
 We apply the deconvolution method to compute size factors for all cells [@lun2016pooling].
-Again, we use `min.mean=0.1` to account for the fact that UMI counts are lower.
-The specification of `cluster=` also ensures that we do not pool cells that are very different.
+The specification of `cluster=` also ensures that we do not pool cells that are very different. We use a average count threshold of 0.1 to define high-abundance genes to use during normalization.
+This is lower than the default threshold of `min.mean=1`, reflecting the fact that UMI counts are generally smaller than read counts.
 
 ```{r}
 sce <- computeSumFactors(sce, min.mean=0.1, cluster=clusters)
@@ -253,24 +224,13 @@ There is no need to call `computeSpikeFactors()` here, as there are no spike-in 
 sce <- normalize(sce)
 ```
 
-**Comments from Aaron:**
-
-- Larger droplet-based datasets will often be generated in separate batches or runs.
-In such cases, we can set `block=` in `quickCluster()` to cluster cells within each batch or run.
-This reduces computational work considerably without compromising performance, provided that there are enough cells within each batch.
-- Even in the absence of any known batch structure, we can improve speed by setting an arbitrary factor, e.g., using `block=cut(seq_len(ncol(sce)), 10)` to split the cells into ten "batches" of roughly equal size.
-Recall that we are not interpreting the clusters themselves, so it is not a problem to have multiple redundant cluster labels.
-Again, this assumes that each cluster is large enough to support deconvolution.
-- On a similar note, both `quickCluster()` and `computeSumFactors()` can process blocks or clusters in parallel.
-This is achieved using the `r Biocpkg("BiocParallel")` framework, which provides support for a range of parallelization strategies.
-
 # Modelling the mean-variance trend
 
 The lack of spike-in transcripts complicates the modelling of the technical noise.
 One option is to assume that most genes do not exhibit strong biological variation, and to fit a trend to the variances of endogenous genes
 (see `r simpleSingleCell:::.link("var", "When spike-ins are unavailable", "here")` for details).
 However, this assumption is generally unreasonable for a heterogeneous population.
-Instead, we assume that the technical noise is Poisson and create a fitted trend on that basis using the `makeTechTrend()` function.
+Instead, we assume that the technical noise is Poisson and create a fitted trend on that basis using the `makeTechTrend()` function. Note that this tends to yield large biological components for highly-expressed genes for which Poisson noise is low (in the log-expression space). This often includes so-called "house-keeping" genes coding for essential cellular components such as ribosomal proteins. Although they can indeed be differentially expressed, their impact in the analaysis can be reduced by fitting the mean-variance trend to the endogenous genes.
 
 ```{r}
 new.trend <- makeTechTrend(x=sce)
@@ -303,26 +263,249 @@ We can plot the genes with the largest biological components, to verify that the
 plotExpression(sce, features=rownames(top.dec)[1:10])
 ```
 
-**Comments from Aaron:**
 
-- The Poisson-based trend from `makeTechTrend()` tends to yield large biological components for highly-expressed genes for which Poisson noise is low (in the log-expression space).
-This often includes so-called "house-keeping" genes coding for essential cellular components such as ribosomal proteins.
-These genes are often considered uninteresting for characterizing cellular heterogeneity, 
-though this is debatable as they are often differentially expressed in a variety of conditions [@glare2002betaactin;@nazari2015gapdh;@guimaraes2016patterns].
-Indeed, the fact that they have large biological components indicates that there is strong variation in their expression across cells, which warrants some further investigation.
-Nonetheless, if they are deemed to be uninteresting, their impact can be reduced by fitting the mean-variance trend to the endogenous genes.
+We use `denoisePCA()` to choose the number of principal components (PCs) to retain based on the technical noise per gene.
+We need to set the seed for reproducibility when `BSPARAM=IrlbaParam()`, due to the use of randomized methods from `r Biocpkg("irlba")`.
 
-# Concluding remarks
+```{r}
+set.seed(12345)
+sce <- denoisePCA(sce, technical=new.trend, BSPARAM=IrlbaParam())
+ncol(reducedDim(sce))
+```
+
+# Doublet detection with clusters
+
+In single-cell RNA sequencing (scRNA-seq) experiments, doublets are artifactual libraries generated from two cells.
+They typically arise due to errors in cell sorting or capture, especially in droplet-based protocols [@zheng2017massively] involving thousands of cells.
+Doublets are obviously undesirable when the aim is to characterize populations at the _single_-cell level.
+In particular, they can incorrectly suggest the existence of intermediate populations or transitory states that not actually exist.
+Thus, it is desirable to remove doublet libraries so that they do not compromise interpretation of the results. 
+Note that doublet detection procedures should only be applied to libraries generated in the same experimental batch, since it is obviously impossible for doublets to form between two cells that were captured separately.
+
+Several experimental strategies are available for doublet removal.
+One approach exploits natural genetic variation when pooling cells from multiple donor individuals [@kang2018multiplexed].
+Doublets can be identified as libraries with allele combinations that do not exist in any single donor.
+Another approach is to mark a subset of cells (e.g., all cells from one sample) with an antibody conjugated to a different oligonucleotide [@stoeckius2017hashing].
+Upon pooling, libraries that are observed to have different oligonucleotides are considered to be doublets and removed.
+These approaches can be highly effective but rely on experimental information that may not be available.
+
+## Clustering into subpopulations
+
+We cluster cells into putative subpopulations using `buildSNNGraph()` [@xu2015identification].
+We use a higher `k` to increase connectivity and reduce the granularity of the clustering.
+
+```{r}
+snn.gr <- buildSNNGraph(sce, use.dimred="PCA", k=10)
+sce$Cluster <- factor(igraph::cluster_walktrap(snn.gr)$membership)
+table(sce$Cluster)
+```
+
+We visualize the clustering on a _t_-SNE plot [@van2008visualizing].
+Figure \@ref(fig:tsneclust) shows that there are a number of well-separated clusters as well as some more inter-related clusters.
+
+```{r tsneclust, fig.cap="t-SNE plot of the mammary gland data set. Each point is a cell coloured according to its assigned cluster identity."}
+set.seed(1000)
+sce <- runTSNE(sce, use_dimred="PCA")
+plotTSNE(sce, colour_by="Cluster")
+```
+
+## Identify intermediate clusters
+
+The `doubletCluster()` function will identify clusters that have intermediate expression profiles of two other clusters [@bach2017differentiation].
+Specifically, it will examine every possible triplet of clusters consisting of a query cluster and its two "parents".
+It will then compute a number of statistics:
+
+- The number of genes (`N`) that are differentially expressed in the same direction in the query cluster compared to _both_ of the parent clusters.
+Such genes would be unique markers for the query cluster and provide evidence against the null hypothesis, i.e., that the query cluster consists of doublets from the two parents.
+Clusters with few unique genes are more likely to be doublets.
+- The ratio of the median library size in each parent to the median library size in the query (`lib.size*`).
+Doublet libraries are generated from a larger initial pool of RNA compared to libraries for single cells, and thus the former should have larger library sizes.
+Library size ratios much greater than unity are inconsistent with a doublet identity for the query.
+- The proportion of cells in the query cluster should also be reasonable - typically less than 5% of all cells, depending on how many cells were loaded onto the 10X Genomics device.
+
+```{r}
+dbl.out <- doubletCluster(sce, sce$Cluster)
+dbl.out
+```
+
+Examination of the output of `doubletCluster()` indicates that cluster 1 has the fewest unique genes and library sizes that are comparable to or greater than its parents.
+We see that every gene detected in this cluster is also expressed in either of the two proposed parent clusters (Figure \@ref(fig:heatclust)).
+
+```{r heatclust, fig.cap="Heatmap of mean-centred and normalized log-expression values for the top set of markers for cluster 1 in the mammary gland dataset. Column colours represent the cluster to which each cell is assigned, as indicated by the legend."}
+markers <- findMarkers(sce, sce$Cluster, direction="any")
+dbl.markers <- markers[["1"]]
+chosen <- rownames(dbl.markers)[dbl.markers$Top <= 10]
+plotHeatmap(sce, columns=order(sce$Cluster), colour_columns_by="Cluster", 
+    features=chosen, cluster_cols=FALSE, center=TRUE, symmetric=TRUE, 
+    zlim=c(-3, 4), show_colnames=FALSE)
+```
+
+The strength of `doubletCluster()` lies in its simplicity and ease of interpretation.
+Suspect clusters can be quickly flagged for further investigation, based on the metrics returned by the function.
+However, it is obviously dependent on the quality of the clustering.
+Clusters that are too coarse will fail to separate doublets from other cells, while clusters that are too fine will complicate interpretation.
+
+Also note that the output of `doubletClusters()` should be treated as a prioritization of "high-risk" clusters that require more careful investigation - no fixed threshold on any one of the metrics alone is sufficient.
+
+# Doublet detection by simulation
+
+## Background
+
+The other doublet detection strategy involves _in silico_ simulation of doublets from the single-cell expression profiles [@dahlin2018single].
+This is performed using the `doubletCells()` function from `r Biocpkg("scran")`, which will:
+
+1. Simulate thousands of doublets by adding together two randomly chosen single-cell profiles.
+2. For each original cell, compute the density of simulated doublets in the surrounding neighbourhood.
+3. For each original cell, compute the density of other observed cells in the neighbourhood.
+4. Return the ratio between the two densities as a "doublet score" for each cell.
+
+This approach assumes that the simulated doublets are good approximations for real doublets.
+The use of random selection accounts for the relative abundances of different subpopulations, which affect the likelihood of their involvement in doublets;
+and the calculation of a ratio avoids high scores for non-doublet cells in highly abundant subpopulations.
+We see the function in action below. Note that to speed up the density calculations, `doubletCells()` will perform a PCA on the log-expression matrix. 
+When `BSPARAM=IrlbaParam()`, methods from the `r CRANpkg("irlba")` package are used to perform a fast approximate PCA.
+This involves randomization so it is necessary to call `set.seed()` to ensure that results are reproducible.
+
+```{r}
+set.seed(100)
+dbl.dens <- doubletCells(sce, BSPARAM=IrlbaParam())
+summary(dbl.dens)
+```
+
+The highest doublet scores are concentrated in a single cluster of cells in the centre of Figure \@ref(fig:denstsne).
+
+```{r denstsne, fig.cap="t-SNE plot of the mammary gland data set. Each point is a cell coloured according to its doublet density."}
+sce$DoubletScore <- dbl.dens
+plotTSNE(sce, colour_by="DoubletScore")
+```
+
+From the clustering information, we see that the affected cells belong to the same cluster that was identified using `doubletCluster()` (Figure \@ref(fig:densclust)). 
+
+```{r densclust, fig.cap="Distribution of doublet scores for each cluster in the mammary gland data set. Each point is a cell."}
+plotColData(sce, x="Cluster", y="DoubletScore", colour_by="Cluster")
+```
+
+
+## Strengths and weaknesses 
+
+The advantage of `doubletCells()` is that it does not depend on clusters, reducing the sensitivity of the results to clustering quality.
+The downside is that it requires some strong assumptions about how doublets form, such as the combining proportions and the sampling from pure subpopulations.
+In particular, `doubletCells()` treats the library size of each cell as an accurate proxy for its total RNA content.
+If this is not true, the simulation will not combine expression profiles from different cells in the correct proportions.
+This means that the simulated doublets will be systematically shifted away from the real doublets, resulting in doublet scores that are too low for the latter.
+
+Simply removing cells with high doublet scores will not be sufficient to eliminate real doublets from the data set.
+As we can see in Figure \@ref(fig:densclust), only a subset of the cells in the putative doublet cluster actually have high scores.
+Removing these would still leave enough cells in that cluster to mislead downstream analyses.
+In fact, even defining a threshold on the doublet score is difficult as the interpretation of the score is relative.
+There is no general definition for a fixed threshold above which libraries are to be considered doublets.
+
+We recommend interpreting the `doubletCells()` scores in the context of cluster annotation.
+All cells from a cluster with a large average doublet score should be considered suspect.
+Close neighbours of problematic clusters (e.g., identified by `clusterModularity()`, see `r simpleSingleCell:::.link("umis", "Evaluating graph-based clusters", "here")`) should be treated with caution.
+A cluster containing a small proportion of high-scoring cells is generally safe for downstream analyses, provided that the user investigates any interesting results to ensure that they are not being driven by those cells^[For example, checking that DE in an interesting gene is not driven solely by cells with high doublet scores.].
+While clustering is still required, this approach is more robust than `doubletClusters()` to the quality of the clustering.
+
+## Remove identified doublet cells
+
+Both approaches above implicated cluster 1 as having a high concentration of doublets. Before proceeding, we'll remove the `r sum(sce$Cluster==1)` cells in this cluster.
+
+```{r}
+sce_singlets <- sce[,-which(sce$Cluster==1)]
+```
+
+# Save object for later use
 
 Having completed preprocessing and normalization, we save the `SingleCellExperiment` object with its associated data to file.
 This avoids having to repeat all of the pre-processing steps described above prior to further analyses.
 
 ```{r}
-saveRDS(sce, file="pbmc_postQC.rds")
+saveRDS(sce_singlets, file="pbmc_postQC.rds")
 ```
 
-All software packages used in this workflow are publicly available from the Comprehensive R Archive Network (https://cran.r-project.org) or the Bioconductor project (http://bioconductor.org).
-The specific version numbers of the packages used are shown below, along with the version of the R installation.
+***
+# Exercises
+
+For these exercises, use the `SingleCellExperiment` object that hasn't been filtered for doublets (`sce`).
+
+## What proportion of measurements are zero?
+
+```{r}
+# your code here
+sum(counts(sce)==0)/length(counts(sce))
+```
+
+## DESeq2 size factors
+
+How many genes can be used in the calcualtion of DESeq2 size factors?  
+
+```{r}
+# your code here
+sum(apply(counts(sce), 1, function(x) all(x>0)))
+```
+
+
+## Compare empty droplet detection methods
+
+For this exercise, use the full `SingleCellExperiment` object that hasn't been processed for empty droplets.
+
+```{r}
+sce.full <- read10xCounts(fname, col.names=TRUE)
+```
+
+Call empty drops with the algorithm from the _CellRanger_ pipeline insetad of `emptyDrops()` as used above. The algorithm from _CellRanger_ can be called using the `defaultDrops()` function.
+
+```{r}
+# your code here
+d.out <- defaultDrops(counts(sce.full))
+```
+
+Compare the empty drop calls between the two methods (using FDR 0.001 for emptyDrops) with a 2x2 table.
+
+```{r}
+# your code here
+table(d.out, e.out$FDR <= 0.001 & !is.na(e.out$FDR))
+```
+
+Plot a histogram of the total counts for the cells called by emptyDrops and not by _CellRanger_, and vise versa. Which tend to have higher total counts?
+
+```{r}
+#your code here
+cat <- rep(NA, length(d.out))
+cat[!d.out & (e.out$FDR <= 0.001 & !is.na(e.out$FDR))] <- "emptyDrop only"
+cat[d.out & !(e.out$FDR <= 0.001 & !is.na(e.out$FDR))] <- "default only"
+
+library(dplyr)
+data.frame(cat=cat, total=bcrank$total) %>%
+  filter(!is.na(cat)) %>%
+  ggplot(aes(x=total, fill=cat)) + 
+  geom_histogram(bins=50)
+```
+
+## Count-depth relationship
+
+Pick a gene with high average expression. Plot the relationship between sequencing depth (size factors) and count of that gene.
+
+```{r}
+# your code here
+plot(sizeFactors(sce), counts(sce)[which.max(rowMeans(counts(sce))) ,]+1)
+```
+
+## Highly variable genes without transformation
+
+What would be the result of selecting the most highly variable genes without log transformation? Plot the distribution of expression values for the genes with the largest (untransformed) variance.
+
+```{r}
+# your code here
+chosen.genes.raw <- order(rowVars(as.matrix(counts(sce))),
+                          decreasing=TRUE)[1:10]
+plotExpression(sce, features=rownames(sce)[chosen.genes.raw]) 
+```
+
+
+***
+
+# Session Information
 
 ```{r}
 sessionInfo()

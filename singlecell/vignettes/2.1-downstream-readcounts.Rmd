@@ -324,10 +324,7 @@ Recreate the PCA plots for the first three dimensions, colored by plate, but thi
 
 ```{r}
 # your code here
-sce <- denoisePCA(sce, technical=var.out, assay.type="logcounts")
-dim(reducedDim(sce, "PCA")) 
-plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
-    colour_by="Plate") 
+
 ```
 
 ## tSNE on noise
@@ -343,10 +340,7 @@ Perform tSNE dimensional reduction and plot the first two components. See how mu
 
 ```{r}
 # your code here
-library(Rtsne)
-set.seed(1)
-t.out <- Rtsne(t(y), perplexity = 1)
-plot(t.out$Y[,1], t.out$Y[,2], pch=16)
+
 ```
 
 ***

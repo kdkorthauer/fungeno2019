@@ -126,22 +126,14 @@ Here we'll explore how different clusterings can be obtained just by varying the
 
 ```{r}
 # your code here
-snn.gr <- buildSNNGraph(sce, use.dimred="PCA", k = 40)
-clusters <- igraph::cluster_walktrap(snn.gr)
-sce$Cluster2 <- factor(clusters$membership)
-table(sce$Cluster, sce$Cluster2)
+
 ```
 
 Make a heatmap of the modularity score for your new clustering. Are you able to find a set of clustering parameters that reduces the amount of strong off-diagnonal entries?
 
 ```{r}
 # your code here
-cluster.mod <- clusterModularity(snn.gr, sce$Cluster2, get.values=TRUE)
-log.ratio <- log2(cluster.mod$observed/cluster.mod$expected + 1)
 
-library(pheatmap)
-pheatmap(log.ratio, cluster_rows=FALSE, cluster_cols=FALSE, 
-    color=colorRampPalette(c("white", "blue"))(100))
 ```
 
 ## Differential expression post-clustering on noise
@@ -161,10 +153,7 @@ Next, use the `findMarkers` function to find genes that separate the `clusters`.
 
 ```{r}
 # your code here
-out <- findMarkers(y, clusters)
-hist(out[[1]]$p.value, col="grey80", xlab="p-value")
 
-sum(p.adjust(out[[1]]$p.value) < 0.05)
 ```
 
 

@@ -432,7 +432,7 @@ For these exercises, use the `SingleCellExperiment` object that hasn't been filt
 
 ```{r}
 # your code here
-sum(counts(sce)==0)/length(counts(sce))
+
 ```
 
 ## DESeq2 size factors
@@ -441,7 +441,7 @@ How many genes can be used in the calcualtion of DESeq2 size factors?
 
 ```{r}
 # your code here
-sum(apply(counts(sce), 1, function(x) all(x>0)))
+
 ```
 
 
@@ -457,29 +457,21 @@ Call empty drops with the algorithm from the _CellRanger_ pipeline insetad of `e
 
 ```{r}
 # your code here
-d.out <- defaultDrops(counts(sce.full))
+
 ```
 
 Compare the empty drop calls between the two methods (using FDR 0.001 for emptyDrops) with a 2x2 table.
 
 ```{r}
 # your code here
-table(d.out, e.out$FDR <= 0.001 & !is.na(e.out$FDR))
+
 ```
 
 Plot a histogram of the total counts for the cells called by emptyDrops and not by _CellRanger_, and vise versa. Which tend to have higher total counts?
 
 ```{r}
 #your code here
-cat <- rep(NA, length(d.out))
-cat[!d.out & (e.out$FDR <= 0.001 & !is.na(e.out$FDR))] <- "emptyDrop only"
-cat[d.out & !(e.out$FDR <= 0.001 & !is.na(e.out$FDR))] <- "default only"
 
-library(dplyr)
-data.frame(cat=cat, total=bcrank$total) %>%
-  filter(!is.na(cat)) %>%
-  ggplot(aes(x=total, fill=cat)) + 
-  geom_histogram(bins=50)
 ```
 
 ## Count-depth relationship
@@ -488,7 +480,7 @@ Pick a gene with high average expression. Plot the relationship between sequenci
 
 ```{r}
 # your code here
-plot(sizeFactors(sce), counts(sce)[which.max(rowMeans(counts(sce))) ,]+1)
+
 ```
 
 ## Highly variable genes without transformation
@@ -497,9 +489,7 @@ What would be the result of selecting the most highly variable genes without log
 
 ```{r}
 # your code here
-chosen.genes.raw <- order(rowVars(as.matrix(counts(sce))),
-                          decreasing=TRUE)[1:10]
-plotExpression(sce, features=rownames(sce)[chosen.genes.raw]) 
+
 ```
 
 

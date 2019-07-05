@@ -13,6 +13,14 @@ knitr::opts_chunk$set(echo = FALSE, error=FALSE, message=FALSE, warning=FALSE)
 set.seed(651)
 ```
 
+## {.smaller}
+
+```{r, out.width = "750px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/allthesinglecells.jpg")
+```
+
+image adapted from http://hyperboleandahalf.blogspot.com/
+
 ## Preview
 <ol type="I">
   <li>**Introduction to single-cell RNA-seq**</li>
@@ -164,4 +172,17 @@ da Veiga Beltrame et al. 2019 (https://doi.org/10.6084/m9.figshare.7704659.v1)
 
 ```{r, out.width = "580px", show=TRUE, fig.align="center", fig.show='hold'}
 knitr::include_graphics(c("./img/cat.gif"))
+```
+
+## Install packages we'll use today
+
+```{r, eval=FALSE, echo = TRUE}
+# workflow that includes many of the packages we'll explore
+BiocManager::install("simpleSingleCell")
+BiocManager::install("simpleSingleCell", dependencies = "Suggests")
+
+# individual packages not included in the above
+BiocManager::install("SCnorm")
+BiocManager::install("scDD")
+BiocManager::install("MAST")
 ```

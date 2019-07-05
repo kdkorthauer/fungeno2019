@@ -304,10 +304,9 @@ knitr::include_graphics("./img/awesomesinglecell.png")
 ```
 
 
-## Installing packages we'll use today
+## Install packages we'll use in the second set of exercises
 
 ```{r, eval=FALSE, echo = TRUE}
-BiocManager::install("mbkmeans")
 BiocManager::install("scDD")
 BiocManager::install("MAST")
 ```

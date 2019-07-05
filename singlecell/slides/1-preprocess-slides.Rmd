@@ -27,8 +27,8 @@ source("./src/smartseq.R")
 ## Getting that count matrix
 
 - standard QC on raw reads (adapter/quality trim)
-- mapping to reference genome - bulk tools appropriate (e.g. Salmon, STAR, RSEM, etc)
-- count reads per transcript/gene - bulk tools widely used (e.g. Subread), specialized tools available (e.g. [Alevin](https://doi.org/10.1186/s13059-019-1670-y) for droplet data)
+- mapping to reference genome - bulk tools appropriate (e.g. Salmon, STAR, bowtie, etc)
+- count reads per transcript/gene - bulk tools widely used (e.g. Subread, RSEM), specialized tools available (e.g. [Alevin](https://doi.org/10.1186/s13059-019-1670-y) for droplet data)
 - collapse UMIs & demultiplex (if applicable) -> [scPipe]( http://bioconductor.org/packages/scPipe/)
 
 ```{r, out.width = "200px", show=TRUE, fig.align="center"}
@@ -175,15 +175,16 @@ knitr::include_graphics("./img/libsize1.png")
 knitr::include_graphics("./img/libsize2.png")
 ```
 
-- DESeq2 library size factors use the median ratio method - Anders and Huber 2010 (https://doi.org/10.1186/gb-2010-11-10-r106): $$ \hat{s}_b = \text{median}_g \frac{y_{bg}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
+- DESeq2 library size factors use the median ratio method - Anders and Huber 2010 (https://doi.org/10.1186/gb-2010-11-10-r106): $$ {s}_b = \text{median}_g \frac{y_{bg}}{(\prod_{j=1}^B y_{gj})^{1/B}} $$
 - assumes majority of genes are not differentially expressed
+- adjusted counts $= \frac{y_{bg}}{s_b}$
 
 ## Median ratio method in single-cell
 
-- Consider this quantity in single-cell: $$ \hat{s}_b = \text{median}_g \color{red}{\frac{y_{bg}}{(\prod_{j=1}^B y_{gj})^{1/B}}} $$
+- Consider this quantity in single-cell: $$ {s}_b = \text{median}_g \color{red}{\frac{y_{bg}}{(\prod_{j=1}^B y_{gj})^{1/B}}} $$
 - For every gene $g$ where $y_{bg} = 0$ for any $b$, the highlighted quantity will be undefined
 - This means that the quantity is only computed **for genes that are nonzero in every cell**
-- As a result, log CPM normalization commonly used for single-cell: $$ log( \frac{y_{bg}*10^6}{\sum_b y_{bg}} + 1) $$
+- As a result, CPM (counts per million) normalization commonly used for single-cell: $$ s_b = \frac{\sum_b y_{bg}}{10^6} $$
 
 ## Pooling & deconvolution normalization
 
@@ -307,15 +308,13 @@ Andrews & Hemburg 2019 (https://doi.org/10.12688/f1000research.16613.1)
 
 <img src="./img/scaterhex.jpg" alt="drawing" width="200"/><img src="./img/scranhex.png" alt="drawing" width="200"/><img src="./img/DropletUtilshex.png" alt="drawing" width="200"/>
 
-## Installing packages we'll use today
+## Install packages we'll use in the first set of exercises
 
 ```{r, eval=FALSE, echo = TRUE}
 # workflow that includes many of the packages we'll explore
-BiocManager::install("EnsDb.Hsapiens.v86")
 BiocManager::install("simpleSingleCell")
 BiocManager::install("simpleSingleCell", dependencies = "Suggests")
 
-# other individual packages not included in the above
+# individual package not included in the above
 BiocManager::install("SCnorm")
-BiocManager::install("sctransform")
 ```

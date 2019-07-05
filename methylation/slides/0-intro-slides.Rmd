@@ -13,12 +13,36 @@ knitr::opts_chunk$set(echo = FALSE, error=FALSE, message=FALSE, warning=FALSE)
 set.seed(651)
 ```
 
-## DNA Methylation: the 5th base?
+## DNA Methylation (5mC) 
+
+
+```{r, out.width = "550px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/5mC.png")
+```
+image source: https://www.epigentek.com
+
+## CpG methylation
 
 ```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/5thbase.png")
 ```
 
+## The 5th base?
+
+* heritable upon cell division
+* dynamic
+
+```{r, out.width = "850px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/copymeth.jpg")
+```
+
+image source: https://slideplayer.com/slide/10719924/
+
+## Preview: role in gene regulation 
+
+```{r, out.width = "750px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/genereg.png")
+```
 
 ## Evolution of methylation assays
 

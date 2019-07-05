@@ -27,9 +27,10 @@ source("./src/smartseq.R")
 ## Getting that count matrix
 
 - standard QC on raw reads (adapter/quality trim)
-- mapping to reference genome - bulk tools appropriate (e.g. Salmon, STAR, bowtie, etc)
-- count reads per transcript/gene - bulk tools widely used (e.g. Subread, RSEM), specialized tools available (e.g. [Alevin](https://doi.org/10.1186/s13059-019-1670-y) for droplet data)
-- collapse UMIs & demultiplex (if applicable) -> [scPipe]( http://bioconductor.org/packages/scPipe/)
+- alignment - bulk tools appropriate (e.g. Salmon, STAR, bowtie, etc)
+- quantify reads per transcript/gene
+  + bulk tools widely used (e.g. Subread, RSEM) 
+  + specialized tools (collapse UMIs & demultiplex) -> [scPipe]( http://bioconductor.org/packages/scPipe/), [Alevin](https://doi.org/10.1186/s13059-019-1670-y)
 
 ```{r, out.width = "200px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/scPipe.png")

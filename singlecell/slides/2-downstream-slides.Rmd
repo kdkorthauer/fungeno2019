@@ -7,6 +7,10 @@ output:
     widescreen: true
     incremental: false
 ---
+
+<style>
+.forceBreak { -webkit-column-break-after: always; break-after: column; }
+</style>
   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, error=FALSE, message=FALSE, warning=FALSE)
@@ -78,14 +82,30 @@ legend(x="topright", pch=c(16,16), col=c("black", "orange"),
 - Useful to summarize & visualize relationships between cells in low dimensional space
 - Commonly used approaches:
   + PCA (Principal Components Analysis)
-  + tSNE (t-distributed Stochastic Neighbor Embedding)
-  + [UMAP](https://doi.org./10.1038/nbt.4314) (Uniform Manifold Approximation and Projection)
+  + [tSNE](http://www.jmlr.org/papers/volume9/vandermaaten08a/vandermaaten08a.pdf) (t-distributed Stochastic Neighbor Embedding)
+  + [UMAP](https://doi.org/10.1038/nbt.4314) (Uniform Manifold Approximation and Projection)
 - Clustering can be carried out on reduced dimensions, but **with caution**
 
-## Review: PCA vs Nonlinear methods
+## t-distributed Stochastic Neighbor Embedding (tSNE) algorithm
 
-- PCA attempts to extract the largest components of variation in the data
-- Nonlinear methods such as tSNE and UMAP attempt to map points to a global coordinate system that preserves local structure
+1. random initialization, then iterate 2 & 3
+2. calculate two probabilities of similiarity (of being neighbors - perplexity parameter roughly governs how many neighbors to consider): 
+    * probability of similarity of points in high-dimensional space
+    * probability of similarity of points in low-dimensional space
+3. minimize difference between these probabilities using Kullback-Leibler (KL) divergence
+    * KL divergence is a distance metric for distributions: $$ D_{KL}(P|Q) = \sum_i p(x_i) log(\frac{p(x_i)}{q(x_1)}) $$
+  
+## Uniform Manifold Approximation and Projection (UMAP)
+
+- Becht et al 2018 (https://doi.org/10.1038/nbt.4314)
+- UMAP attempts to map points to a global coordinate system that preserves local structure
+- Similar conceptually as tSNE, but specifics are different (e.g. different distributional kernels)
+- Comparable performance to tSNE, but slightly better at preserving distances and faster runtime 
+
+
+## PCA vs nonlinear methods
+
+- Nonlinear methods (UMAP & tSNE)
   + density & distance of points not preserved
   + better at visualizing rare subtypes
 
@@ -93,6 +113,20 @@ legend(x="topright", pch=c(16,16), col=c("black", "orange"),
 knitr::include_graphics("./img/dimred.png")
 ```
 image source: http://carbonandsilicon.net/rblogging/2018/02/27/UMAP_plots
+
+
+## Things slow down with large numbers of cells {.columns-2}
+
+```{r, out.width = "325px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/sloth.gif")
+```
+
+<p class="forceBreak"></p>
+
+### Remedies:
+* fast approximate PCA: [irlba - implicitly restarted Lanczos bidiagonalization algorithm](https://cran.r-project.org/package=irlba)
+* run tSNE on PCA (e.g. first 50 PCs)
+* UMAP
 
 ## General purpose clustering
 
@@ -248,7 +282,7 @@ assay(TENxBrainData(), "counts", withDimnames = FALSE)
 - [scDD](http://bioconductor.org/packages/scDD/): differential distributions (Bioconductor)
 - [MAST](http://bioconductor.org/packages/MAST/): differential expression (Bioconductor)
 
-<img src="./img/scranhex.png" alt="drawing" width="200"/>
+<img src="./img/scranhex.png" alt="drawing" width="200"/><img src="./img/scDDhex.png" alt="drawing" width="200"/>
 
 ## There are many more tools I didn't mention...
 

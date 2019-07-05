@@ -343,6 +343,22 @@ Perform tSNE dimensional reduction and plot the first two components. See how mu
 
 ```
 
+## Comparison with MAST DE results (Advanced)
+
+Use the method `r Biocpkg("MAST")` to call differentially expressed genes between induced and control cells. Since `MAST` is not fully compatible with `SingleCellExperiment` assays and expects log normalized counts, you'll need to use this `sca` object which is a `SingleCellAssay` constructed from the `SingleCellExperiment`.
+
+```{r}
+library(MAST)
+sca <- FromMatrix(assays(sce)$logcounts, colData(sce), rowData(sce))
+```
+
+How many genes are found at an FDR of 0.05? What proportion overlap with those found by `scDD`? 
+As recommended, also adjust for the number of expressed genes (`total_features_by_counts` in `colData`). Hint: this requires input of a model matrix type formula to the `zlmCond()` function - `~ Oncogene + total_features_by_counts`. Then run `lrTest` on the output of `zlm`. The relevant p-values are in the third slot of the third dimension of the results (`[,3,3]`).
+
+```{r}
+# your code here
+```
+
 ***
 
 # Session Information

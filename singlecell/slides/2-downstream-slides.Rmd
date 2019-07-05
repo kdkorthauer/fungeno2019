@@ -93,7 +93,7 @@ legend(x="topright", pch=c(16,16), col=c("black", "orange"),
     * probability of similarity of points in high-dimensional space
     * probability of similarity of points in low-dimensional space
 3. minimize difference between these probabilities using Kullback-Leibler (KL) divergence
-    * KL divergence is a distance metric for distributions: $$ D_{KL}(P|Q) = \sum_i p(x_i) log(\frac{p(x_i)}{q(x_1)}) $$
+    * KL divergence is a distance metric for distributions: $$ D_{KL}(P|Q) = \sum_i p(x_i) log(\frac{p(x_i)}{q(x_i)}) $$
   
 ## Uniform Manifold Approximation and Projection (UMAP)
 

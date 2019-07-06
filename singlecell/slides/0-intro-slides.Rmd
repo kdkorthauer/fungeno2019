@@ -68,12 +68,20 @@ hist(log10(counts(sce)[100,]+1), breaks=100, col="grey80",
 - Often the vast majority of measurements are zero
 - Commonly referred to as "dropout" (1-detection rate)
 
-## New techinical artifacts
+## New technical artifacts
 
 ```{r, out.width = "700px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/detectionrate.png")
 ```
 Hicks et al. 2018 (https://doi.org/10.1093/biostatistics/kxx053)
+
+## Dropout rate confounding with batch
+
+```{r, out.width = "850px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/counfound.png")
+```
+Hicks et al. 2018 (https://doi.org/10.1093/biostatistics/kxx053)
+
 
 ## Evolution of single-cell technology
 

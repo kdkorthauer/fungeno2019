@@ -21,8 +21,8 @@ Here, you'll find course material for the 2019 CSHL short course on ["Statistica
   * [Downstream analysis](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.1-downstream-readcounts.html) ([Rmd](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.1-downstream-readcounts.Rmd))
   
 * Droplet data:
-  * [Preprocessing & normalization](https://kkorthauer.org/fungeno2019/singlecell/vignettes/1.2-preprocess-droplet.html) ([Rmd](https://kkorthauer.org/fungeno2019/singlecell/vignettes/1.1-preprocess-readcounts.Rmd))
-  * [Downstream analysis](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.2-downstream-droplet.html) ([Rmd](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.1-downstream-readcounts.Rmd))
+  * [Preprocessing & normalization](https://kkorthauer.org/fungeno2019/singlecell/vignettes/1.2-preprocess-droplet.html) ([Rmd](https://kkorthauer.org/fungeno2019/singlecell/vignettes/1.1-preprocess-droplet.Rmd))
+  * [Downstream analysis](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.2-downstream-droplet.html) ([Rmd](https://kkorthauer.org/fungeno2019/singlecell/vignettes/2.1-downstream-droplet.Rmd))
 
 ##  DNA methylation module
 

@@ -14,7 +14,7 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 set.seed(651)
 ```
 
-This workflow is adapted from portions of the [singleSingleCell Bioconductor workflow](https://www.bioconductor.org/help/workflows/simpleSingleCell/) by Aaron Lun, Davis McCarthy, and John Marioni. Some sections have been simplified, additional material has been added exploring additional methods, and exercises have been added.
+This workflow is adapted from portions of the [simpleSingleCell Bioconductor workflow](https://www.bioconductor.org/help/workflows/simpleSingleCell/) by Aaron Lun, Davis McCarthy, and John Marioni. Some sections have been simplified, additional material has been added exploring additional methods, and exercises have been added.
 
 # Overview
 

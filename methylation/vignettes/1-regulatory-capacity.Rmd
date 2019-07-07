@@ -1,0 +1,37 @@
+---
+title: Exploring the regulatory capacity of DNA methylation 
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+bibliography: ref.bib
+---   
+
+```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
+library(BiocStyle)
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+set.seed(651)
+```
+
+# Download 
+
+In the interest of computational efficiency, for this exercise we'll start with loading a `BSseq` object and only work with chromosome 20. We'll also look only at the control and induced samples (ignoring the withdrawn samples). 
+
+How this data was processed: The original WGBS methylation counts for all cytosines are provided on GEO 
+(accession number [GSE102395](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE102395)). The CpG counts were extracted from these files and the data was read into R and bundled as a `BSseq` object. Metadata obtained from the `getGEO()` function and parsed from the filenames was added to the `pData` slot. You can find the code used to carry out these steps in this [Rmd](https://github.com/kdkorthauer/repressivecapacity/blob/master/Rmd/mCG-RNAseq-analysis.Rmd).
+
+```{r}
+dblink <- "https://www.dropbox.com/s/heipl6nsy90oekq/bsseq_chr20.rds?dl=1"
+dir.create("../data")
+
+download.file(dblink, dest="../data/bsseq_chr20.rds")
+```
+
+Read in 
+
+```{r}
+library(bsseq)
+bs <- readRDS("../data/bsseq_chr20.rds")
+bs
+```

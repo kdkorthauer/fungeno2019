@@ -28,16 +28,14 @@ Here, you'll find course material for the 2019 CSHL short course on ["Statistica
 
 ### Slides
 
-* [Intro to DNA methylation analysis](https://kkorthauer.org/fungeno2019/methylation/slides/0-intro-slides.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/slides/0-intro-slides.Rmd))
-
-* [Statistical analysis of methylation sequencing experiments](https://kkorthauer.org/fungeno2019/methylation/slides/1-analysis-slides.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/slides/1-analysis-slides.Rmd))
+* [Intro to DNA methylation sequencing analysis](https://kkorthauer.org/fungeno2019/methylation/slides/1-intro-slides.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/slides/1-intro-slides.Rmd))
 
 
 ### Workflows & exercises
 
-* [Working with bisulfite sequencing data in R](https://kkorthauer.org/fungeno2019/methylation/vignettes/0-intro-bsseq.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/vignettes/0-intro-bsseq.Rmd))
+* [Binomial regression in R](https://kkorthauer.org/fungeno2019/methylation/vignettes/1-binomial-regression.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/vignettes/1-binomial-regression.Rmd))
 
-* [Statistical analysis of methylation sequencing experiments](https://kkorthauer.org/fungeno2019/methylation/vignettes/1-regulatory-capacity.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/vignettes/1-regulatory-capacity.Rmd))
+* [Exploring the regulatory capacity of DNA methylation](https://kkorthauer.org/fungeno2019/methylation/vignettes/2-regulatory-capacity.html) ([Rmd](https://kkorthauer.org/fungeno2019/methylation/vignettes/2-regulatory-capacity.Rmd))
 
 ***
 These materials are available under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/)

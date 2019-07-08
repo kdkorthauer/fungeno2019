@@ -1,0 +1,325 @@
+---
+title: Binomial regression in R
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+---   
+
+```{r, echo=FALSE, message=FALSE, results="hide", cache=FALSE}
+library(BiocStyle)
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+set.seed(651)
+```
+
+
+# Logistic (Binomial) regression 
+
+Let's start with a very simple example, where we have two groups (goverened by $x$), each with a different probability of success. 
+
+* If $x=0$, then $p=0.4$
+* If $x=1$, then $p=0.6$
+
+We'll sample 50 draws from a binomial distribution, each with $n=10$. In terms of DNA methylation at a particular loci, this would be 50 samples (25 in each group), each with coverage 10, where there's a 20% methylation difference between the two groups.
+
+```{r, fig.width=5, fig.height = 3.5}
+library(ggplot2)
+library(dplyr)
+
+set.seed(1)
+n <- 50
+cov <- 10
+x <- c(rep(0,n/2), rep(1, n/2))
+p <- 0.4 + 0.2*x
+y <- rbinom(n, cov, p)
+
+ggplot(data.frame(x=factor(x),y=as.numeric(y)), 
+            aes(x=x, y=y/cov)) +
+  geom_point(position=position_jitter(height=0.02, width=0.07)) +
+  xlab("x") + 
+  ylab("y/cov") 
+```
+
+Now we fit a logistic regression model with $x$ as a covariate, using the logit link $$ log(\frac{p}{1-p})$$
+
+```{r}
+# Fit a logistic regression model
+model0 <- glm(cbind(y, cov-y) ~ x, family="binomial")
+summary(model0)
+```
+
+We see that $x$ is very predictive of $y$, as we expect. 
+
+***
+## Exercise
+
+Recall that the estimated probability of success for the logistic regression model is the inverse logit function $$ \frac{e^{\beta_0 + x\beta_1}}{1 + e^{\beta_0 + x\beta_1}}.$$ For `model0`, find the estimated probability of success when $x=0$ and when $x=1$. 
+
+```{r}
+# your code here
+```
+
+***
+
+# Logistic regression with overdispersion
+
+The previous example did not allow for any biological variability (only sampling variability). More realistically, we'll sample each sample's methylation probability as a random quantity, where the distributions between groups have a different mean.
+
+To do so, we'll use the beta distribution, since it is a natural fit for modeling proportions. Here, we let the probabilities used by the binomial sampling be equal to the probabilities: $$p=(1-x)p_0 + xp_1,$$ where: $$p_i \sim Beta(\alpha_i,\beta_i).$$ 
+We set the hyperparameters as follows:
+
+*(when $x=0$): $\alpha_0=4$ and $\beta_0=6$
+*(when $x=1$): $\alpha_1=6$ and $\beta_1=4$
+
+Since the mean of the beta distribution is $$E(p_i) = \frac{\alpha_i}{\alpha_i+\beta_i},$$ the average probability of success for the first group ($x=0$) is 0.4, and the average probability of success for the second group ($x=1$) is 0.6. This is because $$E[p] = (1-x)E[p_0] + xE[p_1].$$
+
+Then, we plot the outcomes $y$ against the known value $x$.
+
+```{r, fig.width=5, fig.height = 3.5}
+set.seed(1)
+n <- 50
+cov <- 10
+x <- c(rep(0,n/2), rep(1, n/2))
+p <- pmin((1-x)*rbeta(n,4,6) + x*rbeta(n,6,4), 1)
+y <- rbinom(n, cov, p)
+ 
+ggplot(data.frame(x=factor(x),y=as.numeric(y), p), 
+            aes(x=x, y=y/cov)) +
+  geom_point(position=position_jitter(height=0.02, width=0.07)) +
+  xlab("x") + 
+  ylab("y") 
+```
+
+Now we fit a logistic regression model with $x$ as a covariate. Note that the additional beta noise is not modeled.
+
+```{r}
+# Fit a logistic regression model
+model1 <- glm(cbind(y, cov-y) ~ x, family="binomial")
+summary(model1)
+```
+
+Now we see that $x$ is still predictive of $y$, however the coefficient has a slightly larger _p_-value, likely influenced by the extra beta noise in the binomial probabilities.
+
+
+***
+## Exercise
+
+For `model1`, find the estimated probability of success when $x=0$ and when $x=1$. 
+
+```{r}
+# your code here
+```
+
+***
+
+## Bootstrap comparison 
+
+This result is just based on one random sample - to convince ourselves that this is a consistent effect, we could repeat these two model fits on many random samples (e.g. using the [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html), [broom](https://cran.r-project.org/web/packages/broom/index.html), and
+[purrr](https://cran.r-project.org/web/packages/purrr/index.html)
+packages). Here we show results for 1,000 replicates.
+
+```{r, fig.width = 4, fig.height = 3.5}
+library(dplyr)
+library(broom)
+library(purrr)
+
+set.seed(10)
+
+n <- 50
+cov <- 10
+B <- 1000
+x <- c(rep(0,n/2), rep(1, n/2))
+
+# functions to run one replicate for each model
+m0_rep <- function(){
+  data.frame(x = c(rep(0,n/2), rep(1, n/2))) %>%
+    mutate(p = 0.4 + 0.2*x,
+           cov = cov) %>%
+    mutate(y=rbinom(n, cov, p)) %>%  
+    do(tidy(glm(cbind(y, cov-y) ~ x, family="binomial", data=.), 
+            conf.int = TRUE)) 
+}
+
+m1_rep <- function(){
+  data.frame(x = c(rep(0,n/2), rep(1, n/2))) %>%
+    mutate(p = pmin((1-x)*rbeta(n,4,6) + x*rbeta(n,6,4), 1),
+           cov = cov) %>%
+    mutate(y=rbinom(n, cov, p)) %>%  
+    do(tidy(glm(cbind(y, cov-y) ~ x, family="binomial", data=.), 
+            conf.int = TRUE))
+}
+
+# replicate B times
+m0_all <- replicate(B, m0_rep(), simplify=FALSE) %>% 
+  do.call("rbind", .) %>%
+  mutate(model="m0") %>%
+  mutate(n = sort(rep(1:B, 2)))
+m1_all <- replicate(B, m1_rep(), simplify=FALSE) %>% 
+  do.call("rbind", .) %>%
+  mutate(model="m1") %>%
+  mutate(n = sort(rep(1:B, 2)))
+
+# combine and pull out relevant info
+all <- rbind(m0_all, m1_all)
+x <- filter(all, term == "x")
+prob1 <- all %>% group_by(model,n) %>%
+  summarize(p = sum(estimate))
+prob0 <- all %>% filter(term == "(Intercept)") %>%
+  mutate(p = estimate)
+
+prob0 %>% ggplot(aes(x = model, y = exp(p) / (1+exp(p)))) +
+  geom_boxplot() +
+  ylab("p estimate for x=0") + 
+  geom_hline(yintercept=0.4, linetype="dashed", size=0.8, color = "blue")
+  
+prob1 %>% ggplot(aes(x = model, y = exp(p) / (1+exp(p)))) +
+  geom_boxplot() +
+  ylab("p estimate for x=1") + 
+  geom_hline(yintercept=0.6, linetype="dashed", size=0.8, color = "blue")
+
+sum(all$p.value[all$model=="m0"] > 0.05)
+sum(all$p.value[all$model=="m1"] > 0.05)
+```
+
+# Beta-binomial regression 
+
+In order to account for the overdispersion in the binomial probabilities, let's try fitting a beta-binomial regression model to the data instead.
+
+```{r}
+library(aod)
+dat <- data.frame(s = y, f = cov-y, x = factor(c(rep(0,n/2), rep(1, n/2))))
+model2 <- betabin(cbind(s,f) ~ x, ~ x, data=dat)
+summary(model2)
+```
+
+Notice that the estimated coefficients are similar to `model1`. Also notice that the standard errors are larger, and therefore the _p_-value for the $x$ covariate is larger. We can also see that new overdispersion parameters ($\phi_{x=0}, \phi_{x=1}$) are estimated. Recall that in the beta-binomial regression model, $$ \phi_i = \frac{1}{\alpha_i+\beta_i+1} $$
+
+***
+## Exercise
+
+For `model2`, find the estimated probability of success when $x=0$ and when $x=1$. 
+
+```{r}
+# your code here
+```
+
+What are the true values of the overdispersion parameters in this model? How close are the estimated overdispersion coefficients in `model2`?
+
+```{r}
+# your code here
+```
+
+***
+
+## Bootstrap comparison 
+
+We'll explore how the beta-binomial regression model differs from logistic regression on the same dataset. Here, we'll use a null comparison, where the $x$ variable actually does not have any influence on the binomial probabilities. In terms of methylation, this would be a case where there's no differential methylation. Ideally, the model will estimate the effect of $x$ ($\beta_1$) close to zero. 
+
+```{r, fig.width = 4, fig.height = 3.5}
+set.seed(4)
+
+n <- 20
+cov <- 5
+B <- 1000
+x <- c(rep(0,n/2), rep(1, n/2))
+
+# functions to run one replicate for each model
+data_rep <- function(){
+  data.frame(x = c(rep(0,n/2), rep(1, n/2))) %>%
+    mutate(p = rbeta(n,4,4),
+           cov = cov) %>%
+    mutate(y=rbinom(n, cov, p)) %>%
+    mutate(f=cov-y) %>%
+    mutate(x = as.factor(x))
+}
+
+dat <- replicate(B, data_rep(), simplify=FALSE) 
+
+m1_all <- lapply(dat, function(l)
+  tidy(glm(cbind(y, cov-y) ~ x, family="binomial", data=l), 
+            conf.int = TRUE)) %>%
+  do.call("rbind", .) %>%
+  mutate(model="m1") %>%
+  mutate(n = sort(rep(1:B, 2))) %>%
+  select(estimate, p.value, n, term, model, std.error)
+  
+m2_all <- lapply(dat, function(l) 
+  summary(betabin(cbind(y,f) ~ x, ~ x, data=l))@Coef) %>%
+  do.call("rbind", .) %>%
+  mutate(model="m2") %>%
+  mutate(n = sort(rep(1:B, 2))) %>%
+  mutate(term = rep(c("int", "x1"), B)) %>%
+  mutate(estimate=Estimate,
+         p.value = `Pr(> |z|)`,
+         std.error = `Std. Error`) %>%
+  select(estimate, p.value, n, term, model, std.error)
+    
+# combine and pull out relevant info
+all <- rbind(m1_all, m2_all)
+x <- filter(all, term == "x")
+prob1 <- all %>% group_by(model,n) %>%
+  summarize(p = sum(estimate))
+prob0 <- all %>% filter(term != "x1") %>%
+  mutate(p = estimate/std.error)
+prob1 <- all %>% filter(term == "x1") %>%
+  mutate(p = estimate/std.error)
+
+prob1 %>% ggplot(aes(x = model, y = p)) +
+  geom_boxplot() +
+  ylab("test statistic for x") + 
+  geom_hline(yintercept=0, linetype="dashed", size=0.8, color = "blue")
+
+sum(all$p.value[all$model=="m1"] < 0.1, na.rm = TRUE)
+sum(all$p.value[all$model=="m2"] < 0.1, na.rm = TRUE)
+```
+
+We see that the beta-binomial regression model performs better. This is seen in the test statistic estimates for the $x$ coefficient that are more tightly centered on zero, and the fewer number of rejections at the 0.1 level for a significant coefficient for $x$.
+
+# Pitfalls of GLM
+
+Let's to fit a model to some data which is perfectly [separated](https://en.wikipedia.org/wiki/Separation_(statistics)) (e.g. all successes are in one group and all failures in another, with group as the predictor).
+
+```{r, fig.width = 4, fig.height = 3.5}
+set.seed(1)
+n <- 50
+cov <- 4
+x <- c(rep(0,n/2), rep(1, n/2))
+p <- 0.01 + 0.99*x
+y <- rbinom(n, cov, p)
+
+ggplot(data.frame(x=factor(x),y=as.numeric(y)), 
+            aes(x=x, y=y/cov)) +
+  geom_point(position=position_jitter(height=0, width=0.07)) +
+  xlab("x") + 
+  ylab("y/cov") 
+
+# Fit a logistic regression model
+model.sep <- glm(cbind(y, cov-y) ~ x, family="binomial")
+summary(model.sep)
+```
+
+Notice how the estimate of the coefficient for $x$ and its standard error are extremely large, which yields a $p$-value close to 1. This is because the true proportion difference attributable to $x$ is close to 1. This means that the $$\frac{e^\beta}{1+e^\beta } \approx 1$$ This is a problem, because it means that the solution for $\beta$ approaches $\infty$, and the MLE does not exist. 
+
+## Alternative link function
+
+This instability is avoided by using an alternative link function, such as the arcsine link $$ arcsin(2p-1). $$ Setting the inverse link function to  1 and solving gives $$ \frac{sin(\beta) + 1}{2} = 1$$ which yields $\beta = \pi/2$.
+
+This link function is similar to the logit in that it transforms a (0,1) quantity to the real line, but the transformation is less drastic in the extremes.
+
+```{r, fig.width=4.5, fig.width=3.5}
+p <- sort(c(seq(0,0.01, by=1e-5), seq(0,1,by=0.01), seq(0.99,1, by=1e-5)))
+plot(p, log(p/(1-p)), type = "l", ylab = "transformed", ylim=c(-4,4))
+lines(p, asin(2*p-1), col="red")
+legend("topleft", legend=c("logit", "arcsine"), col=c("black", "red"),
+       lty =c(1,1))
+```
+
+# Session Information
+
+```{r}
+sessionInfo()
+```
+
+
+

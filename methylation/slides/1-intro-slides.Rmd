@@ -63,6 +63,14 @@ knitr::include_graphics("./img/wgbscounts1.png")
 knitr::include_graphics("./img/wgbscounts2.png")
 ```
 
+- DMCs
+- binomial regression
+- beta-binomial regression
+- approximations
+- DMRs 
+- resolution
+- 
+
 ## dmrseq
 
 - [dmrseq](http://bioconductor.org/packages/dmrseq/): differentially methylated regions (Bioconductor)

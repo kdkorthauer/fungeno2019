@@ -18,6 +18,8 @@ set.seed(651)
 
 In the interest of computational efficiency, for this exercise we'll start with loading a `BSseq` object and only work with chromosome 20. We'll also look only at the control and induced samples (ignoring the withdrawn samples). 
 
+smaller chromosome??
+
 How this data was processed: The original WGBS methylation counts for all cytosines are provided on GEO 
 (accession number [GSE102395](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE102395)). The CpG counts were extracted from these files and the data was read into R and bundled as a `BSseq` object. Metadata obtained from the `getGEO()` function and parsed from the filenames was added to the `pData` slot. You can find the code used to carry out these steps in this [Rmd](https://github.com/kdkorthauer/repressivecapacity/blob/master/Rmd/mCG-RNAseq-analysis.Rmd).
 
@@ -34,4 +36,132 @@ Read in
 library(bsseq)
 bs <- readRDS("../data/bsseq_chr20.rds")
 bs
+
+pData(bs)
+```
+
+Next, we download the expression count matrix.
+
+```{r, eval = FALSE}
+# expression counts
+library(R.utils)
+file <- file.path("../data", "GSE102395_MCF7_ZF_DNMT3A_countstable.txt")
+if (!file.exists(file)){
+  download.file(url = "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102395/suppl/GSE102395%5FMCF7%5FZF%5FDNMT3A%5Fcountstable%2Etxt%2Egz",
+              destfile = paste0(file, ".gz"),
+              mode="wb")
+  gunzip(paste0(file, ".gz"))
+}
+```
+
+## Exploratory analysis
+
+Here will look at some sample similarity metrics among the samples to verify that
+control samples are most similar to controls and ZF dox samples are more similar to 
+other ZF dox samples (this is indeed the case from the correlation matrix and
+clustering dendrogram below).
+
+```{r}
+library(DelayedMatrixStats)
+library(ggplot2)
+library(dendextend)
+library(dplyr)
+library(tidyr)
+cov.mat <- getCoverage(bs, type="Cov")
+filter <- pmax( 1*(rowSums2(cov.mat[,pData(bs)$condition == "Control"]) >= 5),
+                1*(rowSums2(cov.mat[,pData(bs)$condition == "Methylated"]) >= 5))
+filter <- which(filter > 0)
+bs.filt <- bs[-filter,]
+rm(cov.mat)
+cormat <- round(cor(as.matrix(getMeth(bs.filt, type="raw")),
+                    use = "pairwise.complete.obs", 
+                    method = "spearman"),2)
+rownames(cormat) <- colnames(cormat) <- labs <- paste0(pData(bs)$condition, 
+                                               pData(bs)$dox, 
+                                               "_Sample", 1:ncol(cormat))
+cormat <- data.frame(cormat) %>%
+  mutate(Sample1 = labs) %>%
+  gather("Sample2", "Correlation", 1:ncol(cormat))
+cormat$Sample1 <- factor(cormat$Sample1) 
+cormat$Sample2 <- factor(cormat$Sample2)
+ggplot(data = cormat, aes(x=Sample1, y=Sample2, fill=Correlation)) + 
+  geom_tile() +
+  scale_fill_gradient(low="white", high="red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# dendrogram
+d <- hclust(dist(t(as.matrix(as.data.frame(getMeth(bs.filt, type="raw")))),
+                 method="euclidean"))
+d$labels <- pData(bs)$condition
+dend <- as.dendrogram(d)
+labels_colors(dend) <-as.numeric(pData(bs)$condition)[order.dendrogram(dend)]
+plot(dend)
+rm(bs.filt)
+```
+
+Plots of coverage by group and sample:
+
+```{r, methplot, fig.width = 8, fig.height = 6}
+library(dmrseq)
+plotEmpiricalDistribution(bs, 
+                          bySample = TRUE,
+                          testCovariate = "condition",
+                          type = "Cov") +
+  guides(linetype=FALSE)
+```
+
+Plots of beta values by group and sample:
+
+```{r, methplot2, fig.width = 8, fig.height = 6}
+plotEmpiricalDistribution(bs, 
+                          bySample = TRUE,
+                          testCovariate = "condition",
+                          adj = 3) +
+  guides(linetype=FALSE)
+```
+
+
+
+# DMR analysis
+
+We will use dmrseq to identify Differentially Methylated Regions (DMRs). 
+
+First we will filter the loci by coverage (remove those with zero coverage
+in at least one condition).
+
+```{r, filter}
+cov.mat <- getCoverage(bs, type="Cov")
+filter <- pmax( 1*(rowSums2(cov.mat[,pData(bs)$condition == "Control"]) == 0),
+                1*(rowSums2(cov.mat[,pData(bs)$condition == "Methylated"]) == 0))
+filter <- which(filter > 0)
+bs <- bs[-filter,]
+rm(cov.mat)
+```
+
+This removed `r length(filter)` out of `r nrow(bs)` loci (
+`r signif(100*length(filter)/nrow(bs), 2)`%). Now we'll run dmrseq.
+
+```{r, dmrseq, message=FALSE}
+library(BiocParallel)
+register(MulticoreParam(1))
+set.seed(399)
+resfile <- file.path("../data", "regions.rds")
+if (!file.exists(resfile)){
+  regions <- dmrseq(bs, testCovariate = "condition",
+                    bpSpan = 500,
+                    maxGap = 500,
+                    maxPerms = 10)
+  saveRDS(regions, file=resfile)
+}else{
+  regions <- readRDS(resfile)
+}
+sum(regions$qval < fdrlevel.dmr)
+```
+
+We'll add the raw mean methylation differences to the region summaries and plot the top DMR.
+
+```{r, fig.width = 15, fig.height= 5}
+regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
+plotDMRs(bs, regions=regions[1,], testCovariate="condition")
 ```

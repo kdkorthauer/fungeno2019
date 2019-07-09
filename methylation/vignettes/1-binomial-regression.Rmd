@@ -1,6 +1,6 @@
 ---
 title: Binomial regression in R
-date: "`r Sys.Date()`"
+date: "July 10, 2019"
 output:
   BiocStyle::html_document:
     toc: true

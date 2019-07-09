@@ -1,6 +1,6 @@
 ---
 title: Exploring the regulatory capacity of DNA methylation 
-date: "`r Sys.Date()`"
+date: "July 10, 2019"
 author: Keegan Korthauer
 output:
   BiocStyle::html_document:
@@ -15,13 +15,13 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 set.seed(651)
 ```
 
-In this vignette, we'll first explore the `BSseq` class of objects for storing bisulfite sequencing data in R. Then we'll go through a reanalysis of a subset of the data from [@ford2017frequent], which concluded that there was not an appreciable reduction in transcription following forced genomewide promoter methylation. The full reanalysis is detailed in [@korthauer2018genome]. The analysis will make use of the `r Biocpkg("dmrseq")` [@korthauer2018detection]. 
+In this vignette, we'll first explore the `BSseq` class of objects for storing bisulfite sequencing data in R. Then we'll go through a reanalysis of a subset of the data from [@ford2017frequent], which concluded that there was not an appreciable reduction in transcription following forced genomewide promoter methylation. The full reanalysis is detailed in [@korthauer2018genome]. The analysis will make use of the `r Biocpkg("dmrseq")` Bioconductor package [@korthauer2018detection]. 
 
-# Download data from Ford et al.
+# Download Ford et al. Data
 
 In the interest of computational efficiency, for this exercise we'll start with loading a `BSseq` object and only work with chromosome 20. We'll also look only at the control and induced samples (ignoring the withdrawn samples).
 
-> **Note**: this will still take some time to run only on a single chromosome, since the p-value calculation involves permutation. On your laptop, you'll want to go get a hot drink while it runs. On a cluster, you can use multiple cores to obtain a faster runtime.
+> **Note**: the `dmrseq` function in the [DMR Analysis section](#dmr) will still take some time to run only on a single chromosome, since the p-value calculation involves permutation. On your laptop, you'll want to go get a hot drink while it runs. On a cluster, you can use multiple cores to obtain a faster runtime.
 
 **How this data was processed**: The original WGBS methylation counts for all cytosines are provided on GEO 
 (accession number [GSE102395](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE102395)). The CpG counts were extracted from these files and the data was read into R and bundled as a `BSseq` object. Metadata obtained from the `getGEO()` function and parsed from the filenames was added to the `pData` slot. You can find the code used to carry out these steps in this [Rmd](https://github.com/kdkorthauer/repressivecapacity/blob/master/Rmd/mCG-RNAseq-analysis.Rmd).
@@ -45,7 +45,7 @@ bs
 colnames(pData(bs))
 ```
 
-# Anatomy of a `BSseq` object
+# `BSseq` Object Anatomy
 
 Here we'll go over basic operations on objects of the class `BSseq`.
 
@@ -55,11 +55,11 @@ class(bs)
 
 Analogous to `SummarizedExperiment` and `SingleCellExperiment`, `BSseq` is a class for housing bisulfite sequencing data along with its metadata. The main components of the class are:
 
-* **M**: matrix of methylated counts (dimension loci $\by$ samples)
-* **Cov**: matrix of coverage counts (dimension loci $\by$ samples)
+* **M**: matrix of methylated counts (dimension loci $\times$ samples)
+* **Cov**: matrix of coverage counts (dimension loci $\times$ samples)
 * **chr**: vector of chromosome names (length loci)
 * **pos**: vector of basepair positions (length loci)
-* **pData**: data frame of sample metadata (dimension samples $\by$ any number of attributes)
+* **pData**: data frame of sample metadata (dimension samples $\times$ any number of attributes)
 * **sampleNames**: vector of unique sample identifiers (length samples)
 
 These are used to construct a new object. For example:
@@ -229,7 +229,7 @@ plotEmpiricalDistribution(bs,
 ```
 
 
-# DMR analysis
+# DMR Analysis {#dmr}
 
 We will use dmrseq to identify Differentially Methylated Regions (DMRs). 
 
@@ -269,7 +269,6 @@ regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
 We'll add the raw mean methylation differences to the region summaries and plot the top 10 DMRs.
 
 ```{r, fig.width = 6.5, fig.height= 3}
-library(annotatr)
 regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
 plotDMRs(bs, regions=regions[1:10,], testCovariate="condition")
 ```
@@ -360,6 +359,7 @@ To find these genes, we'll use the ZF ChIP-seq binding
 site data from the Supplementary table S1.
 
 ```{r, norm}
+library(annotatr)
 if (!file.exists(file.path("../data/170506-1.txt"))){
   download.file(url = "https://www.biorxiv.org/highwire/filestream/57972/field_highwire_adjunct_files/0/170506-1.txt",
               destfile =  file.path("../data/170506-1.txt"))
@@ -406,7 +406,6 @@ dds <- dds[rowSums(counts(dds)) >= 10,]
 dds <- dds[rowSums(counts(dds)==0) <= 0.5,]
 dds <- estimateSizeFactors(dds, 
                            controlGenes = rownames(dds) %in% norm_genes)
-dds_global <- estimateSizeFactors(dds)
 table(dds$condition)
 rowData(dds)$control_expr <- rowMeans(counts(dds, normalize = TRUE)[,dds$condition == "Control"])
 
@@ -441,7 +440,7 @@ Next we need to associate each DMR with a gene by checking overlap with promoter
 We'll use the promoter annotation from annotatr.
 
 ```{r, annotatr-dmrseq}
-regions.sig <- regions[regions$qval < 0.05,]
+regions.sig <- regions[regions$qval < 0.1,]
 ol <- distanceToNearest(regions.sig, annot)
 dmrs <- regions.sig[ol@from[mcols(ol)$distance <= 2000],]
 dmrs$gene <- annot$symbol[ol@to[mcols(ol)$distance <= 2000]]
@@ -475,16 +474,15 @@ with dmrseq FDR < 0.05 that are located within
 Now we create the scatterplot of methylation versus expression for dmrs.
 
 ```{r, dmrs-5a-dmrseq, fig.width = 5, fig.height = 3.5}
-dmrsa <- data.frame(dmrs@listData) %>%
-  dplyr::filter(control_expr > 1) %>%
+dmrsa <- data.frame(dmrs@listData) %>% 
+  dplyr::filter(control_expr > 50) %>%
   mutate(sig = padj < 0.05,
          FC = 2^log2FoldChange,
          delta_mC = meanDiff) %>%
-  mutate(A = 0.5*(log2(baseMean) + 
-               log2(FC*baseMean))) %>%
-  mutate(ABin = ntile(A, 9)) %>%
+  mutate(ptcol = ifelse(qval > 0.05, "Not significant (DMR)", 
+                    ifelse(sig, "DMR and DE", "Not significant (DE)"))) %>%
   dplyr::filter(!is.na(log2FoldChange) & !is.na(sig) & !is.na(delta_mC)) 
-  
+
 ggplot(dmrsa, aes(x = delta_mC, y = log2FoldChange)) +
   geom_hline(yintercept=0, col="black") +
   geom_hline(yintercept=0, col="white", linetype="dashed") +
@@ -495,11 +493,12 @@ ggplot(dmrsa, aes(x = delta_mC, y = log2FoldChange)) +
   scale_color_manual(values=c("black", "red")) +
   geom_smooth(method = "loess", span = 1) +
   labs(color="Differentially\n Expressed")  +
-  ggtitle("dmrseq DMRs (chr20)")
+  ggtitle("dmrseq DMRs (chr20)") +
+  geom_vline(xintercept=0.30, 
+             linetype="dashed", color="grey20")
 ```
 
-From this figure we see that more genes with increased methylation percentage are transcriptionally repressed.
-
+From this figure we see that more genes with high increased methylation percentage (above 30%) are transcriptionally repressed. Specifically, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30) %>% nrow(),3)`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30) %>% nrow(),3)`). Considering only DE at FDR 0.05, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)`)
 
 ***
 
@@ -521,26 +520,14 @@ rank DMRs. This should be more robust than ordering regions simply on their aver
 
 
 ```{r, dmrs-5a-dmrseq-alt, fig.width = 5, fig.height = 3.5}
-dmrsa <- data.frame(dmrs@listData) %>% 
-  dplyr::filter(control_expr > 1) %>%
-  mutate(sig = padj < 0.05,
-         FC = 2^log2FoldChange) %>%
-  mutate(A = 0.5*(log2(baseMean) + 
-               log2(FC*baseMean))) %>%
-  mutate(ABin = ntile(A, 9)) %>%
-  mutate(ptcol2 = ifelse(sig, "Differentially Expressed", 
-                         "Not Differentially Expressed"),
-         ptcol3 = ifelse(qval > 0.05, "Not significant (DMR)", 
-                        ifelse(sig, "DMR and DE", "Not significant (DE)"))) %>%
-  dplyr::filter(!is.na(log2FoldChange) & !is.na(sig)) 
 ggplot(dmrsa, aes(x = stat, y = log2FoldChange)) +
   geom_hline(yintercept=0, col="black") +
   geom_hline(yintercept=0, col="white", linetype="dashed") +
-  geom_point(size=0.5, alpha=0.75, aes(color = ptcol2)) + 
+  geom_point(size=0.5, alpha=0.75, aes(color = ptcol)) + 
   theme_bw() + 
   xlab("Region test statistic") +
   ylab("log2 fold change mRNA abundance") +
-  scale_color_manual(values=c("red", "black")) +
+  scale_color_manual(values=c("red", "black", "grey")) +
   geom_smooth(method = "loess", span = 1) +
   labs(color="Significance")  +
   ggtitle("dmrseq DMRs (chr20)") +
@@ -548,9 +535,7 @@ ggplot(dmrsa, aes(x = stat, y = log2FoldChange)) +
              linetype="dashed", color="grey20")
 ```
 
-We can see that the relationship between increased methylation and decreased expression is even clearer using the dmrseq region statistic.
-
-
+We can see that the relationship between increased methylation and decreased expression is even clearer using the dmrseq region statistic. 
 
 ***
 

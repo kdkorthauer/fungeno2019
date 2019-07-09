@@ -12,16 +12,54 @@ output:
 knitr::opts_chunk$set(echo = FALSE, error=FALSE, message=FALSE, warning=FALSE)
 set.seed(651)
 ```
+<style>
+slides > slide {
+  background: linear-gradient(#ffffff, #ffffff 85%, #ffffff);
+  background-color: black;
+</style>
+
+<style>
+div#before-column p.forceBreak {
+    break-before: column;
+}
+div#after-column p.forceBreak {
+    break-after: column;
+}
+</style>
+
+<style type="text/css">
+body p {
+  color: #000000;
+}
+body li {
+  color: #000000;
+}
+body h1 {
+  color: #000000;
+}
+body h2 {
+  color: #000000;
+}
+body h3 {
+  color: #000000;
+}
+body h4 {
+  color: #000000;
+}
+</style>
 
 ## DNA Methylation (5mC) 
 
+- chemical modification to an individual DNA base (Cytosine)
+- doesn't change coding sequence
 
-```{r, out.width = "550px", show=TRUE, fig.align="center"}
+```{r, out.width = "350px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/5mC.png")
 ```
+
 image source: https://www.epigentek.com
 
-## CpG methylation
+## DNA Methylation (5mC) at CpGs
 
 ```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/5thbase.png")
@@ -51,6 +89,44 @@ knitr::include_graphics("./img/methassays.png")
 ```
 Laird 2010 (https://doi.org/10.1038/nrg2732)
 
+## Analysis of methylation arrays {.columns-2}
+
+* Methylation microarray (e.g. Infinum 450K, Epic 850K) analysis has similarities to expression microarray analysis
+    * Signal is continuous
+    * 1 sample per array
+* Beta values: $$\beta = \frac{\text{methylated intensity}}{(\text{meth} + \text{unmeth intensity})}$$
+* Analysis: regression on $logit(\beta)$
+* Packages: [minfi](http://bioconductor.org/packages/minfi/), [bumphunter](http://bioconductor.org/packages/bumphunter/)
+
+<p class="forceBreak"></p>
+
+```{r, out.width = "450px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/microarray.png")
+```
+
+image: https://en.wikipedia.org/wiki/Illumina_Methylation_Assay
+    
+## Analysis of MeDIPseq {.columns-2}
+
+* MeDIP-sequencing aims to sequence **only** methylated DNA
+* Analysis: differential abundance (counts) on genomic bins
+* Package: [MEDIPS](http://bioconductor.org/packages/MEDIPS/)
+
+<p class="forceBreak">
+<img src="./img/medip.png" width="300" height="450" align="middle"> </img><br>
+image source: https://en.wikipedia.org/wiki/Methylated_DNA_immunoprecipitation
+</p>
+
+## Analysis of bisulfite sequencing
+
+* Bisulfite sequencing (e.g. WGBS, RRBS)
+    * basepair resolution
+    * binomial count of methylated/unmethylated reads 
+* Analysis: beta-binomial regression
+* Packages: [bsseq](http://bioconductor.org/packages/bsseq/), [dss](http://bioconductor.org/packages/dss/), [dmrseq](http://bioconductor.org/packages/dmrseq/)
+
+<img src="./img/bsseq.png" alt="drawing" width="200"/><img src="./img/dmrseqhex.png" alt="drawing" width="200"/>
+
 ## Bisulfite sequencing
 
 ```{r, out.width = "1000px", show=TRUE, fig.align="center"}
@@ -69,24 +145,122 @@ knitr::include_graphics("./img/wgbscounts2.png")
 * adapter/quality trimming [Trim Galore!](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/)
 * alignment with [Bismark](https://www.bioinformatics.babraham.ac.uk/projects/bismark/) 
 * read into R with [bsseq](http://bioconductor.org/packages/bsseq/) package
-    
+
 ```{r, out.width = "200px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/bsseq.png")
 ```
 
-## topics to add 
+## Differential methylation 
 
-- DMCs
-- binomial regression
-- beta-binomial regression
-- approximations
-- DMRs 
-- resolution
-- 
+* differentially methylated cytosine (DMC) or locus (DML):
+    * array: test each probe 
+    * bisulfite sequencing: test each cytosine 
 
-## dmrseq
+* differentially methylated region (DMR): 
+    * array: test groups of neighboring probes 
+    * bisulfite sequencing: test groups of cytosines
 
-- [dmrseq](http://bioconductor.org/packages/dmrseq/): differentially methylated regions (Bioconductor)
+## DMC test of bisulfite read counts 
 
-<img src="./img/dmrseqhex.png" alt="drawing" width="200"/>
+> - For cytosine $i$ and sample $j$ in condition $s$, we have:
+> - $M_{ij}$ reads corresponding to methylation
+> - $C_{ij}$ total reads covering $i$
+> - $p_s$ be the methylation probability in condition $s$
+> - Let $M_{ij} | C_{ij} \sim Binom(C_{ij}, p_{s})$
+> - How to test whether $p_1 = p_2$?
 
+## Binomial (Logisitic) regression
+
+- Generalized linear model for probability of success $p$: $$log(\frac{p}{1-p}) = \boldsymbol{X\beta}$$
+- Link function $g(p) = log(\frac{p}{1-p})$ describes relationship between proportional response and linear predictor
+- No closed form; fit with iterative ML estimation
+- Interpret coefficients on original scale with inverse link function $g^{-1}$: $$ p = \frac{e^{\boldsymbol{X\beta}}}{1+e^{\boldsymbol{X\beta}}} $$
+- In R: `glm(cbind(successes, failures) ~ x, family="binomial")`
+
+## Binomial regression with overdispersion
+
+- In ordinary logistic regression, $p$ is assumed to be constant for all samples with in group
+- To model *overdispersion*, we might want to allow this quantity to vary
+- For example, let $$p_s \sim Beta(\alpha_s, \beta_s)$$
+- Overdispersion parameter $\phi = \frac{1}{\alpha_s + \beta_s + 1}$ contributes to increased variance
+- In R: `aod::betabin(cbind(successes,failures) ~ x, ~ x)`
+ 
+## Pitfalls of binomial regression 
+
+- What happens to link function $log(\frac{p}{1-p})$ if $p=0$ or 1?
+    - binomial regression unstable for fully methylated or unmethylated cytosines
+- Computationally intensive to fit model at every cytosine
+- DSS: Park & Wu 2016 (https://doi.org/10.1093/bioinformatics/btw026)
+  - Differential methylation under general experimental design
+  - Alternate link function: $arcsine(2p-1)$
+  - Approximate fitting with Generalized Least Squares (GLS) 
+
+## Generalized Least Squares (GLS) in a nutshell
+
+- Hybrid of linear regression and generalized linear regression
+- Pro: stable & closed form estimates (fast)
+- Con: approximate
+- Key idea: flexible covariance structure allows for specification of approximate beta-binomial error
+
+## Individual cytosine differences
+
+```{r, out.width = "900px", show=TRUE}
+knitr::include_graphics("./img/dmc1.png")
+```
+
+## CpG 1 
+
+```{r, out.width = "800px", show=TRUE}
+knitr::include_graphics("./img/dmc2.png")
+```
+
+## CpG 2 
+
+```{r, out.width = "800px", show=TRUE}
+knitr::include_graphics("./img/dmc3.png")
+```
+
+## Previous approaches: grouping significant CpGs
+
+```{r, out.width = "900px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/fdr2.png")
+```
+
+Examples: BSmooth ([Hansen et al. 2012](https://doi.org/10.1186/gb-2012-13-10-r83)), DSS ([Park et al. 2016](https://doi.org/10.1093/bioinformatics/btw026))
+
+## FDR at the region level
+
+```{r, out.width = "900px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/fdr3.png")
+```
+
+$$ \text{False Discovery Rate (FDR)} = E\Big[\frac{FP}{FP + TP}\Big]$$
+
+>- $FDR_{CpG} = 2/10 = 0.20$
+>- $FDR_{DMR} = 1/2 = 0.50$
+
+## Accurate inference of DMRs
+
+- Korthauer et al. 2018 (https://doi.org/10.1093/biostatistics/kxy007)
+- Key ideas: 
+    - model methylation signal over region
+    - permutation to acheive accurate FDR control
+- [dmrseq](http://bioconductor.org/packages/dmrseq/): accurate inference for detection of differentially methylated regions (Bioconductor)
+    
+```{r, out.width = "200px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/dmrseqhex.png")
+```
+
+## dmrseq: 2-stage approach
+
+```{r, out.width = "800px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/2stage.png")
+```
+
+## dmrseq output
+
+```{r, out.width = "800px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/exdmr.png")
+```
+
+## Ford et al. story

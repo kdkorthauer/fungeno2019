@@ -1,6 +1,7 @@
 ---
 title: Exploring the regulatory capacity of DNA methylation 
 date: "`r Sys.Date()`"
+author: Keegan Korthauer
 output:
   BiocStyle::html_document:
     toc: true
@@ -130,6 +131,36 @@ Using the `pData()` function, tabulate how many samples are in each condition (s
 
 ***
 
+## Test for DMC
+
+Here we'll carry out a simple test for differentially methylated cytosine at a specific locus using beta-binomial regression. Note that this cytosine was cherry-picked specifically for illustrative purposes (it was already discovered to be differentially methylated by region level analysis).
+
+```{r}
+ix <- 533680
+start(bs)[ix]
+df <- data.frame(m = getCoverage(bs, type = "M")[ix,],
+                 cov = getCoverage(bs, type = "Cov")[ix,],
+                 prob = getMeth(bs, type = "raw")[ix,],
+                 treatment = pData(bs)$condition)
+df
+
+library(aod)
+fit <- betabin(cbind(m, cov-m) ~ treatment, ~ treatment, data=df)
+summary(fit)
+```
+
+***
+
+## Exercise
+
+What is the estimated difference in methylation levels between the methylated and control samples at this loci?
+
+```{r}
+# your code here
+```
+
+***
+
 ## Exploratory analysis
 
 Here will look at some sample similarity metrics among the samples to verify that
@@ -232,6 +263,7 @@ if (!file.exists(resfile)){
   regions <- readRDS(resfile)
 }
 sum(regions$qval < 0.1)
+regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
 ```
 
 We'll add the raw mean methylation differences to the region summaries and plot the top 10 DMRs.
@@ -241,6 +273,18 @@ library(annotatr)
 regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
 plotDMRs(bs, regions=regions[1:10,], testCovariate="condition")
 ```
+
+***
+
+## Exercise
+
+Plot a histogram of the sizes (width in basepairs) of the regions that are significant at the 0.05 level (by qvalue).
+
+```{r}
+# your code here
+```
+
+***
 
 # DE Analysis
 
@@ -259,3 +303,271 @@ if (!file.exists(file)){
   gunzip(paste0(file, ".gz"))
 }
 ```
+
+First we need to run the differential expression analysis. 
+
+```{r, expressionEDA, fig.width=8, fig.height=4}
+library(data.table)
+exp <- fread(file.path("../data/GSE102395_MCF7_ZF_DNMT3A_countstable.txt"))
+```
+
+We need to remove two duplicate genes. Examining the names of these genes, it appears it may stem from a classic [Microsoft Excel conversion error](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-1044-7?utm_content=buffer67f08&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer) [@ziemann2016gene]. We also move the gene names to row names, and remove rows that have only zero values.
+
+```{r}
+# There are duplicate genes -- looks like a classic excel conversion error -- remove these
+dup <- which(table(exp$gene) > 1)
+names(dup)
+exp <- exp %>% dplyr::filter(!(gene %in% names(dup)))
+
+# move genes to rownames  
+rownames(exp) <- exp$gene
+exp <- as.matrix(exp %>% dplyr::select(-gene))
+
+# remove genes that are all zero
+allZero <- rowSums(exp==0)==ncol(exp)
+exp <- exp[!allZero,]
+
+```
+
+We construct the metadata to put in the `colData` of the DESeq2 dataset object.
+
+```{r}
+# strings to match the two comparison samples - control and ZF + DOX
+ctrl <- "MCF7_emptyVector|MCF7_ZF_DNMT3A_noDOX_rep"
+trt <- "MCF7_ZF_DNMT3A_DOX"
+
+# set up colData
+coldata <- data.frame(sample=colnames(exp)) %>%
+  mutate(condition = ifelse(grepl(ctrl, sample), "Control",
+                     ifelse(grepl(trt, sample), "Methylated", "Other"))) 
+```
+
+Here we construct the DESeq2 dataset.
+
+```{r}
+library(DESeq2)
+dds <- DESeqDataSetFromMatrix(countData = exp,
+                              colData = coldata,
+                              design = ~ condition)
+```
+
+Since we expect (and do indeed observe - see [@korthauer2018genome]) global shifts in the expected
+direction (i.e. lower expression for the methylated condition), we will not perform
+standard normalization using all genes. Instead, we'll compute size factors only on a set of control genes that
+were at least 10kb away from a ZF binding site or putative DMR (by dmrseq, with
+FDR level 0.25).
+To find these genes, we'll use the ZF ChIP-seq binding
+site data from the Supplementary table S1.
+
+```{r, norm}
+if (!file.exists(file.path("../data/170506-1.txt"))){
+  download.file(url = "https://www.biorxiv.org/highwire/filestream/57972/field_highwire_adjunct_files/0/170506-1.txt",
+              destfile =  file.path("../data/170506-1.txt"))
+}
+ts1 <- fread(file.path("../data/170506-1.txt"), header=FALSE, skip=1)  #ZF Binding sites
+colnames(ts1) <- c("chr", "start", "end", "closest_gene_promoter", 
+                   "distance_to_nearest_promoter",
+                   "promoter_classification",
+                   "CpGisland_classification", 
+                   "genebody_classification",
+                   "enhancer_classification")
+annot = build_annotations(genome = 'hg19', annotations = 'hg19_genes_promoters')
+ol <- distanceToNearest(regions[regions$qval < 0.25,], annot)
+ol2 <- findOverlaps(regions[regions$qval < 0.25,], annot)
+dmr_genes <- unique(c(annot$symbol[ol@to[mcols(ol)$distance <= 10000]],
+                      annot$symbol[ol2@to]))
+dmr_genes <- dmr_genes[!is.na(dmr_genes)]
+zf_genes <- (ts1 %>%
+  dplyr::filter(distance_to_nearest_promoter <= 10000))$closest_gene_promoter
+
+exp <- data.frame(counts(dds)) %>% 
+  mutate(gene = rownames(dds)) %>%
+  gather(sample, count, 1:ncol(dds)) %>% 
+  mutate(condition = ifelse(grepl(ctrl, sample), "Control", "Methylated")) %>%
+  mutate(dox = ifelse(grepl("noDOX", sample), "No Dox", 
+                      ifelse(grepl("DOXremoval", sample), "Dox withdrawal", 
+                             "Dox")))
+
+norm_genes <- unique((exp %>%
+  dplyr::filter(!(gene %in% unique(c(dmr_genes, zf_genes)))))$gene)
+
+str(norm_genes)
+```
+
+We only compute sizefactors on the `r length(norm_genes)` control genes.
+We also filter out very lowly expressed genes (total counts in all samples together
+fewer than 10 or counts of zero in more than half of the samples), and include only genes on chromosome 20.
+We'll use the 8 no dox control versus the 4 dox methylated group for the DE comparison. 
+
+```{r, deseq}
+dds <- dds[, dds$condition == "Methylated" | 
+             (dds$condition == "Control" & grepl("noDOX", dds$sample)) ]
+dds <- dds[rowSums(counts(dds)) >= 10,]
+dds <- dds[rowSums(counts(dds)==0) <= 0.5,]
+dds <- estimateSizeFactors(dds, 
+                           controlGenes = rownames(dds) %in% norm_genes)
+dds_global <- estimateSizeFactors(dds)
+table(dds$condition)
+rowData(dds)$control_expr <- rowMeans(counts(dds, normalize = TRUE)[,dds$condition == "Control"])
+
+library(EnsDb.Hsapiens.v86)
+location <- mapIds(EnsDb.Hsapiens.v86, keys=rownames(dds), 
+    column="SEQNAME", keytype="SYMBOL")
+rowData(dds)$chr <- location
+
+dds <- dds[rowData(dds)$chr == "20" & !is.na(rowData(dds)$chr),]
+```
+
+Finally, we actually run DEseq2.
+
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+sum(res$padj < 0.05, na.rm = TRUE)
+res$control_expr <- rowData(dds)$control_expr
+dds <- dds[!is.na(res$padj)]
+res <- res %>% na.omit()
+```
+
+# Methylation vs Expression
+
+Here we'll create several figures exploring the relationship between methylation and expression,
+using effect size (methylation proportion difference) as the statistic of interest to 
+rank DMRs.
+
+##  Associate dmrseq DMRs with genes
+
+Next we need to associate each DMR with a gene by checking overlap with promoters.
+We'll use the promoter annotation from annotatr.
+
+```{r, annotatr-dmrseq}
+regions.sig <- regions[regions$qval < 0.05,]
+ol <- distanceToNearest(regions.sig, annot)
+dmrs <- regions.sig[ol@from[mcols(ol)$distance <= 2000],]
+dmrs$gene <- annot$symbol[ol@to[mcols(ol)$distance <= 2000]]
+dmrs$prom <- annot[ol@to[mcols(ol)$distance <= 2000],]
+  
+dmrs <- dmrs[!is.na(dmrs$gene),]
+```
+
+Now that we have a set of DMR-Gene associations, we'll add the the DE information 
+to the DMR data frame.
+
+```{r}
+# add DE results
+baseMeanPerLvl <- sapply( levels(dds$condition), 
+                          function(lvl) 
+                            rowMeans(counts(dds,normalized=TRUE)[,dds$condition == lvl] ))
+res <- cbind(res, baseMeanPerLvl)
+x <- match(dmrs$gene, rownames(res)) 
+dmrs <- dmrs[!is.na(x),]
+x <- x[!is.na(x)]
+res.dmrs <- res[x,]
+dmrs <- cbind(DataFrame(dmrs), res.dmrs)
+```
+
+There are `r sum(dmrs$padj < 0.05)` DE genes (at DESeq2 FDR < 0.05)
+with dmrseq FDR < 0.05 that are located within
+2kb of a gene promoter.
+
+## Scatterplot of methylation versus expression
+
+Now we create the scatterplot of methylation versus expression for dmrs.
+
+```{r, dmrs-5a-dmrseq, fig.width = 5, fig.height = 3.5}
+dmrsa <- data.frame(dmrs@listData) %>%
+  dplyr::filter(control_expr > 1) %>%
+  mutate(sig = padj < 0.05,
+         FC = 2^log2FoldChange,
+         delta_mC = meanDiff) %>%
+  mutate(A = 0.5*(log2(baseMean) + 
+               log2(FC*baseMean))) %>%
+  mutate(ABin = ntile(A, 9)) %>%
+  dplyr::filter(!is.na(log2FoldChange) & !is.na(sig) & !is.na(delta_mC)) 
+  
+ggplot(dmrsa, aes(x = delta_mC, y = log2FoldChange)) +
+  geom_hline(yintercept=0, col="black") +
+  geom_hline(yintercept=0, col="white", linetype="dashed") +
+  geom_point(size=0.5, alpha=0.75, aes(color = sig)) + 
+  theme_bw() + 
+  xlab(expression(paste(Delta, "mCG in DMR"))) +
+  ylab("log2 fold change mRNA abundance") +
+  scale_color_manual(values=c("black", "red")) +
+  geom_smooth(method = "loess", span = 1) +
+  labs(color="Differentially\n Expressed")  +
+  ggtitle("dmrseq DMRs (chr20)")
+```
+
+From this figure we see that more genes with increased methylation percentage are transcriptionally repressed.
+
+
+***
+
+## Exercise
+
+What is the pearson correlation between absolute methylation difference and expression foldchange?
+
+```{r}
+# your code here
+```
+
+***
+
+## Scatterplot with dmrseq statistic
+
+Here we'll create a scatterplot exploring the relationship between methylation and expression
+using the dmrseq statistic as the statistic of interest to 
+rank DMRs. This should be more robust than ordering regions simply on their average methylation difference.
+
+
+```{r, dmrs-5a-dmrseq-alt, fig.width = 5, fig.height = 3.5}
+dmrsa <- data.frame(dmrs@listData) %>% 
+  dplyr::filter(control_expr > 1) %>%
+  mutate(sig = padj < 0.05,
+         FC = 2^log2FoldChange) %>%
+  mutate(A = 0.5*(log2(baseMean) + 
+               log2(FC*baseMean))) %>%
+  mutate(ABin = ntile(A, 9)) %>%
+  mutate(ptcol2 = ifelse(sig, "Differentially Expressed", 
+                         "Not Differentially Expressed"),
+         ptcol3 = ifelse(qval > 0.05, "Not significant (DMR)", 
+                        ifelse(sig, "DMR and DE", "Not significant (DE)"))) %>%
+  dplyr::filter(!is.na(log2FoldChange) & !is.na(sig)) 
+ggplot(dmrsa, aes(x = stat, y = log2FoldChange)) +
+  geom_hline(yintercept=0, col="black") +
+  geom_hline(yintercept=0, col="white", linetype="dashed") +
+  geom_point(size=0.5, alpha=0.75, aes(color = ptcol2)) + 
+  theme_bw() + 
+  xlab("Region test statistic") +
+  ylab("log2 fold change mRNA abundance") +
+  scale_color_manual(values=c("red", "black")) +
+  geom_smooth(method = "loess", span = 1) +
+  labs(color="Significance")  +
+  ggtitle("dmrseq DMRs (chr20)") +
+  geom_vline(xintercept=min(dmrsa$stat[dmrsa$qval<0.05]), 
+             linetype="dashed", color="grey20")
+```
+
+We can see that the relationship between increased methylation and decreased expression is even clearer using the dmrseq region statistic.
+
+
+
+***
+
+## Exercise
+
+What is the pearson correlation between methylation statistic and expression fold change?
+
+```{r}
+# your code here
+```
+
+***
+
+# Session Information
+
+```{r}
+sessionInfo()
+```
+
+# References

@@ -63,6 +63,19 @@ knitr::include_graphics("./img/wgbscounts1.png")
 knitr::include_graphics("./img/wgbscounts2.png")
 ```
 
+## Preprocessing
+
+* QC ([fastQC](https://www.bioinformatics.babraham.ac.uk/projects/download.html)/[multiQC](https://multiqc.info/))
+* adapter/quality trimming [Trim Galore!](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/)
+* alignment with [Bismark](https://www.bioinformatics.babraham.ac.uk/projects/bismark/) 
+* read into R with [bsseq](http://bioconductor.org/packages/bsseq/) package
+    
+```{r, out.width = "200px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/bsseq.png")
+```
+
+## topics to add 
+
 - DMCs
 - binomial regression
 - beta-binomial regression

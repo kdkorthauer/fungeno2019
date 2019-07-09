@@ -171,29 +171,29 @@ knitr::include_graphics("./img/bsseq.png")
 
 ## Binomial (Logisitic) regression
 
-- Generalized linear model for probability of success $p$: $$log(\frac{p}{1-p}) = \boldsymbol{X\beta}$$
-- Link function $g(p) = log(\frac{p}{1-p})$ describes relationship between proportional response and linear predictor
-- No closed form; fit with iterative ML estimation
-- Interpret coefficients on original scale with inverse link function $g^{-1}$: $$ p = \frac{e^{\boldsymbol{X\beta}}}{1+e^{\boldsymbol{X\beta}}} $$
-- In R: `glm(cbind(successes, failures) ~ x, family="binomial")`
+>- Generalized linear model for probability of success $p$: $$log(\frac{p}{1-p}) = \boldsymbol{X\beta}$$
+>- Link function $g(p) = log(\frac{p}{1-p})$ describes relationship between proportional response and linear predictor
+>- No closed form; fit with iterative ML estimation
+>- Interpret coefficients on original scale with inverse link function $g^{-1}$: $$ p = \frac{e^{\boldsymbol{X\beta}}}{1+e^{\boldsymbol{X\beta}}} $$
+>- In R: `glm(cbind(successes, failures) ~ x, family="binomial")`
 
 ## Binomial regression with overdispersion
 
-- In ordinary logistic regression, $p$ is assumed to be constant for all samples with in group
-- To model *overdispersion*, we might want to allow this quantity to vary
-- For example, let $$p_s \sim Beta(\alpha_s, \beta_s)$$
-- Overdispersion parameter $\phi = \frac{1}{\alpha_s + \beta_s + 1}$ contributes to increased variance
-- In R: `aod::betabin(cbind(successes,failures) ~ x, ~ x)`
+>- In ordinary logistic regression, $p$ is assumed to be constant for all samples with in group
+>- To model *overdispersion*, we might want to allow this quantity to vary
+>- For example, let $$p_s \sim Beta(\alpha_s, \beta_s)$$
+>- Overdispersion parameter $\phi = \frac{1}{\alpha_s + \beta_s + 1}$ contributes to increased variance
+>- In R: `aod::betabin(cbind(successes,failures) ~ x, ~ x)`
  
 ## Pitfalls of binomial regression 
 
-- What happens to link function $log(\frac{p}{1-p})$ if $p=0$ or 1?
-    - binomial regression unstable for fully methylated or unmethylated cytosines
-- Computationally intensive to fit model at every cytosine
-- DSS: Park & Wu 2016 (https://doi.org/10.1093/bioinformatics/btw026)
-  - Differential methylation under general experimental design
-  - Alternate link function: $arcsine(2p-1)$
-  - Approximate fitting with Generalized Least Squares (GLS) 
+>- What happens to link function $log(\frac{p}{1-p})$ if $p=0$ or 1?
+>    - binomial regression unstable for fully methylated or unmethylated cytosines
+>- Computationally intensive to fit model at every cytosine
+>- DSS: Park & Wu 2016 (https://doi.org/10.1093/bioinformatics/btw026)
+>    - Differential methylation under general experimental design
+>    - Alternate link function: $arcsine(2p-1)$
+>    - Approximate fitting with Generalized Least Squares (GLS) 
 
 ## Generalized Least Squares (GLS) in a nutshell
 
@@ -283,11 +283,11 @@ Korthauer et al. 2018 (https://doi.org/10.1093/biostatistics/kxy007)
 knitr::include_graphics("./img/ford.png")
 ```
 
-> - "Promoter DNA methylation is **generally not sufficient** for transcriptional inactivation" 
+>- "Promoter DNA methylation is **generally not sufficient** for transcriptional inactivation" 
 
 ## Design of Ford et al. Study
 
-```{r, out.width = "700px", show=TRUE, fig.align="center"}
+```{r, out.width = "850px", show=TRUE, fig.align="center"}
 knitr::include_graphics("./img/dox.png")
 ```
 

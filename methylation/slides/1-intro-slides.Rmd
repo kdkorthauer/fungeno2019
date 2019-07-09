@@ -263,4 +263,72 @@ knitr::include_graphics("./img/2stage.png")
 knitr::include_graphics("./img/exdmr.png")
 ```
 
-## Ford et al. story
+## Review: role in gene regulation 
+
+```{r, out.width = "750px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/genereg.png")
+```
+
+## Correlation or causation?
+
+```{r, out.width = "600px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/corplot.png")
+```
+
+Korthauer et al. 2018 (https://doi.org/10.1093/biostatistics/kxy007)
+
+## First genome-wide study of causality
+
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/ford.png")
+```
+
+> - "Promoter DNA methylation is **generally not sufficient** for transcriptional inactivation" 
+
+## Design of Ford et al. Study
+
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/dox.png")
+```
+
+## Conclusion: methylation not generally sufficient
+
+```{r, out.width = "700px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/fig5.png")
+```
+
+## Reanalysis with dmrseq
+
+- original study used DSS (approach grouping individual CpGs)
+- **main question : does accurate inference of methylation increase make a difference in the conclusion?**
+
+## Results of the reanalysis
+
+```{r, out.width = "800px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/new0.png")
+```
+
+Korther & Irizarry 2018 (https://doi.org/10.1101/381145)
+
+## Results of the reanalysis
+
+```{r, out.width = "800px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/new1.png")
+```
+
+Korther & Irizarry 2018 (https://doi.org/10.1101/381145)
+
+## Significance: statistical $\iff$ biological 
+
+```{r, out.width = "660px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/new2.gif")
+```
+
+Korther & Irizarry 2018 (https://doi.org/10.1101/381145)
+
+## 
+
+```{r, out.width = "660px", show=TRUE, fig.align="center"}
+knitr::include_graphics("./img/micdrop.gif")
+```
+

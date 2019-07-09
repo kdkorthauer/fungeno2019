@@ -305,7 +305,7 @@ Notice how the estimate of the coefficient for $x$ and its standard error are ex
 
 This instability is avoided by using an alternative link function, such as the arcsine link $$ arcsin(2p-1). $$ Setting the inverse link function to  1 and solving gives $$ \frac{sin(\beta) + 1}{2} = 1$$ which yields $\beta = \pi/2$.
 
-This link function is similar to the logit in that it transforms a (0,1) quantity to the real line, but the transformation is less drastic in the extremes.
+This link function is similar to the logit in that it transforms a (0,1) quantity in order to stabilize variance, but the transformation is less drastic in the extremes.
 
 ```{r, fig.width=4.5, fig.width=3.5}
 p <- sort(c(seq(0,0.01, by=1e-5), seq(0,1,by=0.01), seq(0.99,1, by=1e-5)))

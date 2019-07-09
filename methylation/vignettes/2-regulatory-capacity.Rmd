@@ -29,7 +29,9 @@ In the interest of computational efficiency, for this exercise we'll start with 
 dblink <- "https://www.dropbox.com/s/heipl6nsy90oekq/bsseq_chr20.rds?dl=1"
 dir.create("../data")
 
-download.file(dblink, dest="../data/bsseq_chr20.rds")
+bsfile <- "../data/bsseq_chr20.rds"
+if (!file.exists(bsfile))
+  download.file(dblink, dest=bsfile)
 ```
 
 Read in chromosome 20 `BSseq` object and check out the metadata in the `pData` slot.
@@ -42,21 +44,7 @@ bs
 colnames(pData(bs))
 ```
 
-Next, we download the expression count matrix.
-
-```{r, eval = FALSE}
-# expression counts
-library(R.utils)
-file <- file.path("../data", "GSE102395_MCF7_ZF_DNMT3A_countstable.txt")
-if (!file.exists(file)){
-  download.file(url = "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102395/suppl/GSE102395%5FMCF7%5FZF%5FDNMT3A%5Fcountstable%2Etxt%2Egz",
-              destfile = paste0(file, ".gz"),
-              mode="wb")
-  gunzip(paste0(file, ".gz"))
-}
-```
-
-## Anatomy of a `BSseq` object
+# Anatomy of a `BSseq` object
 
 Here we'll go over basic operations on objects of the class `BSseq`.
 
@@ -118,6 +106,12 @@ sampleNames(testBS)
 pData(testBS)
 ```
 
+Note that you can subset the object by loci (rows) and/or samples (columns), just as you would a `SummarizedExperiment` object, and all the existing slots will be carry through the subsetting accordingly.
+
+```{r}
+testBS[2,]
+```
+
 ***
 
 ## Exercise
@@ -135,7 +129,6 @@ Using the `pData()` function, tabulate how many samples are in each condition (s
 ```
 
 ***
-
 
 ## Exploratory analysis
 
@@ -247,4 +240,22 @@ We'll add the raw mean methylation differences to the region summaries and plot 
 library(annotatr)
 regions$meanDiff <- meanDiff(bs, dmrs=regions, testCovariate="condition")
 plotDMRs(bs, regions=regions[1:10,], testCovariate="condition")
+```
+
+# DE Analysis
+
+Here we carry out a differential expression analysis using the corresponding RNAseq data from [@ford2017frequent].
+
+First, we download the expression count matrix.
+
+```{r, eval = FALSE}
+# expression counts
+library(R.utils)
+file <- file.path("../data", "GSE102395_MCF7_ZF_DNMT3A_countstable.txt")
+if (!file.exists(file)){
+  download.file(url = "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102395/suppl/GSE102395%5FMCF7%5FZF%5FDNMT3A%5Fcountstable%2Etxt%2Egz",
+              destfile = paste0(file, ".gz"),
+              mode="wb")
+  gunzip(paste0(file, ".gz"))
+}
 ```

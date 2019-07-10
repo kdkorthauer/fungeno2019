@@ -57,19 +57,27 @@ We see that $x$ is very predictive of $y$, as we expect.
 Recall that the estimated probability of success for the logistic regression model is the inverse logit function $$ \frac{e^{\beta_0 + x\beta_1}}{1 + e^{\beta_0 + x\beta_1}}.$$ For `model0`, find the estimated probability of success when $x=0$ and when $x=1$. 
 
 ```{r}
-# your code here
+# when x = 0
+exp(coef(model0)[1]) /  (1+exp(coef(model0)[1]))
+# when x = 1
+exp(sum(coef(model0))) /  (1+exp(sum(coef(model0))))
 ```
 
 Try fitting an ordinary least squares (linear regression) model with `lm` on transformed proportions. Recall that this model assumes normally distributed error and does not explicitly model the count nature of the data. How does this model compare to the logistic model? 
 
 ```{r}
-# your code here
+logit <- function(p){
+  log(p/(1-p))
+}
+linearfit <- lm(logit(y/cov) ~ x)
+
+summary(linearfit)
 ```
 
 Examine the distrition of the residuals of the previous model. Do they appear normal?
 
 ```{r}
-# your code here
+plot(density(residuals(linearfit)))
 ```
 
 ***
@@ -120,7 +128,10 @@ Now we see that $x$ is still predictive of $y$, however the coefficient has a sl
 For `model1`, find the estimated probability of success when $x=0$ and when $x=1$. 
 
 ```{r}
-# your code here
+# when x = 0
+exp(coef(model1)[1]) /  (1+exp(coef(model1)[1]))
+# when x = 1
+exp(sum(coef(model1))) /  (1+exp(sum(coef(model1))))
 ```
 
 ***
@@ -213,13 +224,22 @@ Notice that the estimated coefficients are similar to `model1`. Also notice that
 For `model2`, find the estimated probability of success when $x=0$ and when $x=1$. 
 
 ```{r}
-# your code here
+# when x = 0
+exp(coef(model2)[1]) /  (1+exp(coef(model2)[1]))
+# when x = 1
+exp(sum(coef(model2))) /  (1+exp(sum(coef(model2)[2])))
 ```
 
 What are the true values of the overdispersion parameters in this model? How close are the estimated overdispersion coefficients in `model2`?
 
 ```{r}
-# your code here
+# phi1 = 1/ (alpha1 + beta1 + 1)
+phi1 <- 1/(4 + 6 + 1) 
+phi1
+
+# phi2 is the same as phi1 since the sum of alpha + beta are equal
+
+summary(model2)@Phi$Estimate - phi1
 ```
 
 ***

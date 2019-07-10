@@ -120,13 +120,15 @@ testBS[2,]
 Extract the methylation counts matrix from the `bs` object. Notice what class it is in.
 
 ```{r}
-# your code here
+getCoverage(bs, type="M")
+
+class(getCoverage(bs, type="M"))
 ```
 
 Using the `pData()` function, tabulate how many samples are in each condition (stored in the `condition` column).
 
 ```{r}
-# your code here
+table(pData(bs)$condition)
 ```
 
 ***
@@ -155,7 +157,10 @@ summary(fit)
 What is the estimated difference in methylation levels between the methylated and control samples at this locus?
 
 ```{r}
-# your code here
+# controls
+exp(coef(fit)[1]) /  (1+exp(coef(fit)[1]))
+# treated
+exp(sum(coef(fit))) /  (1+exp(sum(coef(fit))))
 ```
 
 ***
@@ -279,7 +284,7 @@ plotDMRs(bs, regions=regions[1:10,], testCovariate="condition")
 Plot a histogram of the sizes (width in basepairs) of the regions that are significant at the 0.05 level (by qvalue).
 
 ```{r}
-# your code here
+hist(width(regions[regions$qval < 0.05,]))
 ```
 
 ***
@@ -506,7 +511,7 @@ From this figure we see that more genes with high increased methylation percenta
 What is the pearson correlation between absolute methylation difference and expression foldchange?
 
 ```{r}
-# your code here
+cor(dmrsa$delta_mC, dmrsa$log2FoldChange)
 ```
 
 ***
@@ -543,7 +548,7 @@ We can see that the relationship between increased methylation and decreased exp
 What is the pearson correlation between methylation statistic and expression fold change?
 
 ```{r}
-# your code here
+cor(dmrsa$stat, dmrsa$log2FoldChange)
 ```
 
 ***

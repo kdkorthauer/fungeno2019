@@ -125,7 +125,7 @@ image source: https://en.wikipedia.org/wiki/Methylated_DNA_immunoprecipitation
 * Packages: 
     * [bsseq](http://bioconductor.org/packages/bsseq/): smoothed t-test
     * [dss](http://bioconductor.org/packages/dss/): approximate beta-binomial regression
-    * [dmrseq](http://bioconductor.org/packages/dmrseq/): approximate beta-binomial regression over regions
+    * [dmrseq](http://bioconductor.org/packages/dmrseq/): approximate beta-binomial regression over regions<br>
     
 <p class="forceBreak">
 <img src="./img/bsseq.png" alt="drawing" width="200"/><img src="./img/dmrseqhex.png" alt="drawing" width="200"/>
@@ -357,10 +357,12 @@ knitr::include_graphics("./img/micdrop.gif")
 
 ## Packages you'll need
 
-```{r, eval = FALSE}
+```{r, eval = FALSE, echo=TRUE}
 # binomial regression exercises:
 BiocManager::install(c("ggplot2", "dplyr", "broom", "purrr", "aod"))
 
 # regulatory capacity vignette:
-BiocManager::install(c("R.utils", "data.table", "annotatr", "dmrseq", "bsseq", "DelayedMatrixStats", "dendextend", "tidyr", "BiocParallel"))
+BiocManager::install(c("R.utils", "data.table", "annotatr", "dmrseq",
+                       "bsseq", "DelayedMatrixStats", "dendextend", 
+                       "tidyr", "BiocParallel"))
 ```

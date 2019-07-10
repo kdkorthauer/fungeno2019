@@ -125,7 +125,8 @@ image source: https://en.wikipedia.org/wiki/Methylated_DNA_immunoprecipitation
 * Packages: 
     * [bsseq](http://bioconductor.org/packages/bsseq/): smoothed t-test
     * [dss](http://bioconductor.org/packages/dss/): approximate beta-binomial regression
-    * [dmrseq](http://bioconductor.org/packages/dmrseq/): approximate beta-binomial regression over regions<br>
+    * [dmrseq](http://bioconductor.org/packages/dmrseq/): approximate beta-binomial regression over regions
+<br>
     
 <p class="forceBreak">
 <img src="./img/bsseq.png" alt="drawing" width="200"/><img src="./img/dmrseqhex.png" alt="drawing" width="200"/>
@@ -167,27 +168,54 @@ knitr::include_graphics("./img/bsseq.png")
 
 > - For cytosine $i$ and sample $j$ in condition $s$, we have:
 > - $M_{ij}$ reads corresponding to methylation
-> - $C_{ij}$ total reads covering $i$
+> - $N_{ij}$ total reads covering $i$
 > - $p_s$ be the methylation probability in condition $s$
-> - Let $M_{ij} \sim Binom(C_{ij}, p_{s})$
-> - Or equivalently, $M_{ij}$ is the sum of $C_{ij}$ draws from $Bernoulli(p_s)$
+> - Let $M_{ij} \sim Binom(N_{ij}, p_{s})$
+> - Or equivalently, $M_{ij}$ is the sum of $N_{ij}$ draws from $Bernoulli(p_s)$
 > - How to test whether $p_1 = p_2$?
 
 ## Binomial (Logisitic) regression
 
 >- Generalized linear model for probability of success $p$: $$logit(p)=log\Big(\frac{p}{1-p}\Big) = \boldsymbol{X\beta}$$
->- Link function $g(p) = log\big(\frac{p}{1-p}\big)$ describes relationship between proportional response and linear predictor
+>- Link function $g(p) = log\big(\frac{p}{1-p}\big)$ describes relationship between mean parameter of response and linear predictor
 >- No closed form; fit with iterative ML estimation
 >- Interpret coefficients on original scale with inverse link function $g^{-1}$: $$ p = \frac{e^{\boldsymbol{X\beta}}}{1+e^{\boldsymbol{X\beta}}} $$
 >- In R: `glm(cbind(successes, failures) ~ x, family="binomial")`
+
+## Link functions for GLM
+
+```{r, out.width = "300px", fig.align="center"}
+knitr::include_graphics("./img/link.png")
+```
+Thiele & Markussen 2012 (https://doi.org/10.1079/PAVSNNR20127016)
+
+## Why logit transformation?
+
+```{r, fig.width = 4.5, fig.height=4.5, show=TRUE, fig.align="center"}
+p <- sort(c(seq(0,0.01, by=1e-5), seq(0,1,by=0.01), seq(0.99,1, by=1e-5)))
+plot(p, log(p/(1-p)), type = "l", ylab = "transformed", ylim=c(-5,5))
+```
+
+## GLM vs Linear Regression
+
+>- **Linear regression** on transformed proportions $z$ (`lm()`):
+>    - $log\Big(\frac{p}{1-p}\Big) = \boldsymbol{z} = \boldsymbol{X\beta} + \boldsymbol{\epsilon}$
+>    - $\boldsymbol{z} \sim N(\boldsymbol{X\beta},\sigma^2)$
+>    - $Var(\boldsymbol{z}) = \sigma^2$
+
+>- **Generlized Linear regression** on binary variables $y$ (`glm()`):
+>    - $\boldsymbol{y} \sim Bern(p)$, $Var(\boldsymbol{y}) = p(1-p)$
+>    - $log\Big(\frac{p}{1-p}\Big) = g(p) = \boldsymbol{X\beta}$
+>    - $Var(y) = g^{-1}(\boldsymbol{X\beta})(1-g^{-1}(\boldsymbol{X\beta}))$
 
 ## Binomial regression with overdispersion
 
 >- In ordinary logistic regression, $p$ is assumed to be constant for all samples with in group
 >- To model *overdispersion*, we might want to allow this quantity to vary
->- For example, let $$p_s \sim Beta(\alpha_s, \beta_s)$$
->- Overdispersion parameter $\phi = \frac{1}{\alpha_s + \beta_s + 1}$ contributes to increased variance
->- Variance $\sigma^2 = p(1-p)(\alpha + \beta + n)\phi$ 
+>- For example, let $$p \sim Beta(\alpha, \beta)$$ $$M \sim Binom(N, p)$$
+>- This is the **Beta-Binomial** distribution
+>- Overdispersion parameter $\phi = \frac{1}{\alpha + \beta + 1}$ contributes to increased variance
+>- Variance $\sigma^2 = p(1-p)(\alpha + \beta + N)\phi$ 
 >- In R: `aod::betabin(cbind(successes,failures) ~ x, ~ x)`
  
 ## Pitfalls of binomial regression 

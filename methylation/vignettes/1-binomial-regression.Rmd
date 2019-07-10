@@ -60,6 +60,18 @@ Recall that the estimated probability of success for the logistic regression mod
 # your code here
 ```
 
+Try fitting an ordinary least squares (linear regression) model with `lm` on transformed proportions. Recall that this model assumes normally distributed error and does not explicitly model the count nature of the data. How does this model compare to the logistic model? 
+
+```{r}
+# your code here
+```
+
+Examine the distrition of the residuals of the previous model. Do they appear normal?
+
+```{r}
+# your code here
+```
+
 ***
 
 # Logistic regression with overdispersion
@@ -307,7 +319,7 @@ This instability is avoided by using an alternative link function, such as the a
 
 This link function is similar to the logit in that it transforms a (0,1) quantity in order to stabilize variance, but the transformation is less drastic in the extremes.
 
-```{r, fig.width=4.5, fig.width=3.5}
+```{r, fig.width=4.5, fig.height=3}
 p <- sort(c(seq(0,0.01, by=1e-5), seq(0,1,by=0.01), seq(0.99,1, by=1e-5)))
 plot(p, log(p/(1-p)), type = "l", ylab = "transformed", ylim=c(-4,4))
 lines(p, asin(2*p-1), col="red")

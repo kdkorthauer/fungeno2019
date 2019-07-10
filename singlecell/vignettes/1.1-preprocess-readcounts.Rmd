@@ -517,15 +517,13 @@ sce <- readRDS("416B_preQC.rds")
 How many cells were on each plate? How many cells were induced? Create a 2x2 table that displays the number of cells in each plate and phenotype combination.
 
 ```{r}
-# your code here
-
+table(colData(sce)$Oncogene, colData(sce)$Plate)
 ```
 
 ## What proportion of measurements are zero?
 
 ```{r}
-# your code here
-
+sum(counts(sce)==0)/length(counts(sce))
 ```
 
 ## How many mitochondrial genes?
@@ -533,8 +531,7 @@ How many cells were on each plate? How many cells were induced? Create a 2x2 tab
 How many mitochondrial genes are present?
 
 ```{r}
-# your code here
-
+summary(location=="chrM")
 ```
 
 ## How many cells were removed?
@@ -542,8 +539,7 @@ How many mitochondrial genes are present?
 How many outlier cells were removed in total?
 
 ```{r}
-# your code here
-
+sum(!keep)
 ```
 
 ## Average expressed count versus probability of expression
@@ -551,8 +547,9 @@ How many outlier cells were removed in total?
 Examine the relationship between the average read count and the number of expressed cells, but taking the average count only among *expressed* cells (with count > 0). Hint: manually calculate the average count among nonzero cells, and plot against `num.cells` as before. 
 
 ```{r}
-# your code here
-
+ave.nz.counts <- apply(counts(sce), 1, function(x) mean(x[x>0]))
+smoothScatter(log10(ave.nz.counts), num.cells, ylab="Number of cells", 
+    xlab=expression(Log[10]~"average nonzero count"))
 ```
 
 ## Compare size factors
@@ -566,21 +563,19 @@ sce <- readRDS("416B_postQC.rds")
 Compute DESeq2 size factors using `estimateSizeFactorsForMatrix`.
 
 ```{r}
-# your code here
-
+library(DESeq2)
+sf <- estimateSizeFactorsForMatrix(counts(sce))
 ```
 
 How do they compare with the pooled size factor estimates? 
 ```{r}
-# your code here
-
+plot(sf, sizeFactors(sce))
 ```
 
 How many genes are used in the calcualtion of DESeq2 size factors? 
 
 ```{r}
-# your code here
-
+sum(apply(counts(sce), 1, function(x) all(x>0)))
 ```
 
 ## Count-depth relationship
@@ -588,8 +583,7 @@ How many genes are used in the calcualtion of DESeq2 size factors?
 Pick a gene with high average expression. Plot the relationship between sequencing depth (size factors) and count of that gene.
 
 ```{r}
-# your code here
-
+plot(sf, counts(sce)[which.max(rowMeans(counts(sce))) ,])
 ```
 
 ## Highly variable genes without transformation
@@ -597,8 +591,8 @@ Pick a gene with high average expression. Plot the relationship between sequenci
 What would be the result of selecting the most highly variable genes without log transformation? Plot the distribution of expression values for the genes with the largest (untransformed) variance.
 
 ```{r}
-# your code here
-
+chosen.genes.raw <- order(rowVars(counts(sce)), decreasing=TRUE)[1:10]
+plotExpression(sce, features=rownames(sce)[chosen.genes.raw]) 
 ```
 
 ***

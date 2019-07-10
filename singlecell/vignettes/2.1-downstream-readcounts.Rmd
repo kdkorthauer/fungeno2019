@@ -323,8 +323,10 @@ saveRDS(file="416B_data.rds", sce)
 Recreate the PCA plots for the first three dimensions, colored by plate, but this time using the uncorrected log counts in the `logcounts` assays slot (instead of the `corrected` counts that were adjusted for batch in the previous Rmd). Which PC contains the most variation in plate?
 
 ```{r}
-# your code here
-
+sce <- denoisePCA(sce, technical=var.out, assay.type="logcounts")
+dim(reducedDim(sce, "PCA")) 
+plotReducedDim(sce, use_dimred="PCA", ncomponents=3, 
+    colour_by="Plate") 
 ```
 
 ## tSNE on noise
@@ -339,8 +341,10 @@ y <- matrix(rnorm(100000), ncol=100)
 Perform tSNE dimensional reduction and plot the first two components. See how much structure you can impose by varying the parameters of the algorithm. Hint: you can use the `Rtsne` package, and try varying the `perplexity` and/or other paramters.
 
 ```{r}
-# your code here
-
+library(Rtsne)
+set.seed(1)
+t.out <- Rtsne(t(y), perplexity = 1)
+plot(t.out$Y[,1], t.out$Y[,2], pch=16)
 ```
 
 ## Comparison with MAST DE results (Advanced)
@@ -353,10 +357,14 @@ sca <- FromMatrix(assays(sce)$logcounts, colData(sce), rowData(sce))
 ```
 
 How many genes are found at an FDR of 0.05? What proportion overlap with those found by `scDD`? 
-As recommended, also adjust for the number of expressed genes (`total_features_by_counts` in `colData`). Hint: this requires input of a model matrix type formula to the `zlmCond()` function - `~ Oncogene + total_features_by_counts`. Then run `lrTest` on the output of `zlm`. The relevant p-values are in the third slot of the third dimension of the results (`[,3,3]`).
+As recommended, also adjust for the number of expressed genes (`total_features_by_counts` in `colData`). Hint: this requires input of a model matrix type formula to the `zlm()` function - `~ Oncogene`. Then run `lrTest` on the output of `zlm()`. The relevant p-values are in the third slot of the third dimension of the results (`[,3,3]`).
 
 ```{r}
-# your code here
+zlmCond <- zlm(~Oncogene, sca)
+lrt <- lrTest(zlmCond, "Oncogene")
+sum(p.adjust(lrt[,3,3]) < 0.01)
+
+table(p.adjust(lrt[,3,3]) < 0.01, results(dd)$combined.pvalue.adj < 0.01)
 ```
 
 ***

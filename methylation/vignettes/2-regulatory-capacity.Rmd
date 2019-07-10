@@ -137,7 +137,6 @@ Here we'll carry out a simple test for differentially methylated cytosine at a s
 
 ```{r}
 ix <- 533680
-start(bs)[ix]
 df <- data.frame(m = getCoverage(bs, type = "M")[ix,],
                  cov = getCoverage(bs, type = "Cov")[ix,],
                  prob = getMeth(bs, type = "raw")[ix,],
@@ -153,7 +152,7 @@ summary(fit)
 
 ## Exercise
 
-What is the estimated difference in methylation levels between the methylated and control samples at this loci?
+What is the estimated difference in methylation levels between the methylated and control samples at this locus?
 
 ```{r}
 # your code here
@@ -498,7 +497,7 @@ ggplot(dmrsa, aes(x = delta_mC, y = log2FoldChange)) +
              linetype="dashed", color="grey20")
 ```
 
-From this figure we see that more genes with high increased methylation percentage (above 30%) are transcriptionally repressed. Specifically, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30) %>% nrow(),3)`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30) %>% nrow(),3)`). Considering only DE at FDR 0.05, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)`)
+From this figure we see that more genes with high increased methylation percentage (above 30%) are transcriptionally repressed. Specifically, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30) %>% nrow(),3)*100`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30) %>% nrow(),3)`). Considering only DE at FDR 0.05, `r dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()` genes with 30% methylation increase showed decreased expression (`r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow() / dmrsa %>% dplyr::filter(delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)*100`%, odds of `r signif(dmrsa %>% dplyr::filter(log2FoldChange < 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow()  / dmrsa %>% dplyr::filter(log2FoldChange > 0 & delta_mC > 0.30 & padj < 0.05) %>% nrow(),3)`)
 
 ***
 

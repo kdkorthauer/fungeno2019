@@ -16,7 +16,7 @@ set.seed(651)
 
 # Logistic (Binomial) regression 
 
-Let's start with a very simple example, where we have two groups (goverened by $x$), each with a different probability of success. 
+Let's start with a very simple example, where we have two groups (goverened by $x$), each with a different probability of success. Let the probability of success equal $p=(1-x)p_0 + xp_1$, so that 
 
 * If $x=0$, then $p=0.4$
 * If $x=1$, then $p=0.6$
@@ -69,8 +69,8 @@ The previous example did not allow for any biological variability (only sampling
 To do so, we'll use the beta distribution, since it is a natural fit for modeling proportions. Here, we let the probabilities used by the binomial sampling be equal to the probabilities: $$p=(1-x)p_0 + xp_1,$$ where: $$p_i \sim Beta(\alpha_i,\beta_i).$$ 
 We set the hyperparameters as follows:
 
-*(when $x=0$): $\alpha_0=4$ and $\beta_0=6$
-*(when $x=1$): $\alpha_1=6$ and $\beta_1=4$
+* when $x=0$: $\alpha_0=4$ and $\beta_0=6$
+* when $x=1$: $\alpha_1=6$ and $\beta_1=4$
 
 Since the mean of the beta distribution is $$E(p_i) = \frac{\alpha_i}{\alpha_i+\beta_i},$$ the average probability of success for the first group ($x=0$) is 0.4, and the average probability of success for the second group ($x=1$) is 0.6. This is because $$E[p] = (1-x)E[p_0] + xE[p_1].$$
 
